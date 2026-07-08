@@ -1,124 +1,132 @@
-# Reusable LLM skills to help students learn more effectively
+# Reusable Claude skills to help students study more effectively
 
-A small toolkit of three skills that support two distinct parts of student life:
+**v2.0.0** — a framework of six composable skills that turn a Claude Project into a
+study hub for one course: a lean knowledge base built from your lecture material,
+exam intelligence collected in one place, and interactive sessions that always know
+where you stand.
 
-- **Exam prep** — `lecture-digest` and `study-tutor` work together to turn a semester's
-  worth of lecture material into a lean knowledge base and then drill you against it in
-  the run-up to an exam.
-- **Ongoing coursework** — `assignment-check` is a standalone tool you reach for
-  throughout the semester whenever you've done an assignment and want a grader's-eye
-  read on it, independent of any exam-prep setup.
-
-Everything here is **subject-agnostic** — the skills infer structure from your material
+Everything is **subject-agnostic** — the skills infer structure from your material
 rather than assuming a field, so they work for any course.
 
----
-
-## The three skills
-
-| Skill | What it does | You give it | You get back |
-|-------|-------------|-------------|--------------|
-| **lecture-digest** | Condenses lecture slides/notes into a lean, exam-focused knowledge base — and builds your study plan | One lecture file per run (PDF, docx, md, txt) | A per-lecture `digest`, plus course-wide `topic-tracker.md`, `study-plan.md`, and a Project-instructions block |
-| **study-tutor** | Runs interactive study sessions — quizzes, mock exams, explain-it-back — grounded in your digests | "Quiz me on lecture 4", "mock exam", "revise topic X" | A live tutoring session + an updated `topic-tracker.md` |
-| **assignment-check** | Reviews **your own** completed solutions like a sharp TA, flagging where you'd lose points | An assignment sheet + your worked solution | Per-task, grader's-eye feedback |
-
-`lecture-digest` and `study-tutor` share one **course knowledge base** — a Claude
-Project holding your digests, tracker, and plan; the first builds it, the second reads
-from it. `assignment-check` stands on its own: it just needs the assignment sheet and
-your solution (lecture slides are an optional bonus), so you can use it with or without a
-Project set up.
+> v2 is a re-architecture and starts fresh: it does **not** read v1's
+> `topic-tracker.md` / `study-plan.md` files, and there is no converter. Finish
+> running courses on v1; start new ones on v2.
 
 ---
 
-## Track A — Preparing for an exam (`lecture-digest` + `study-tutor`)
+## The three ways you'll use it
 
-This is the multi-step arc: build a knowledge base from your lectures, plan the
-revision, then drill against it.
+**1 — After-lecture study sessions (during the semester).** A few days after each
+lecture: `uni-import` the new slides, then `uni-tutor` for a short practice
+session — the new material plus a light spaced recap of older topics that tie in.
+Solidifying as you go makes exam prep at the end dramatically cheaper.
 
-### 1. Set up a Claude Project for the course
+**2 — Assignment work.** While working on a sheet, you can invoke `uni-check` to get grader's-eye feedback on the tasks you've attempted (where would points go, and why). On its own, `uni-check` will not generate any solutions for you. If you
+force it to, and thereby violate the LLM usage policy of your course, that's on you!
 
-Make one Claude Project per course. This is your exam-prep hub — all digests, the
-tracker, and the plan live here so every session starts from your current state.
+**3 — Exam prep (end of semester).** `uni-import` whatever exam intelligence you
+have (past exams, the professor's exam-info slides), then `uni-plan` to build a
+study schedule that fits your real days and hours — it runs `uni-assess` first if your
+topic statuses are cold. Then repeated `uni-tutor` sessions work the plan,
+enabling you to study the material in a fun interactive manner. Courses
+where you skipped the mid-semester sessions just start here.
 
-On your first run, `lecture-digest` also hands you a ready-to-paste **Project
-instructions block**. Paste it into the Project's custom instructions so requests route
-to the right skill automatically ("quiz me" → tutor, "I have an exam on [date]" →
-planning).
+## The six skills
 
-### 2. Digest your lectures (`lecture-digest`)
+| Skill | One job | Typical trigger |
+|-------|---------|-----------------|
+| **uni-setup** | Scaffold a course project: instructions block + initial state file | "Set up my [course] course" |
+| **uni-import** | Import ONE piece of material: lecture → digest + topics; exam material → exam brief | "Digest this chapter", "here's a past exam" |
+| **uni-assess** | Minutes-long confidence self-assessment that seeds topic statuses | "Rate my confidence", "I don't know where I stand" |
+| **uni-plan** | Build/update the study schedule from exam intelligence + real availability | "Exam is on the 24th, help me plan" |
+| **uni-tutor** | Interactive study sessions, with or without a plan | "Quiz me", "let's practice lecture 4", "mock exam" |
+| **uni-check** | TA-style review of your own attempted solutions | "Check my solution", "I'm stuck on task 3" |
 
-Upload **one lecture file at a time** and ask Claude to digest it. Each run produces a
-compact digest capturing the core concepts, key relationships, formulas/theorems, likely
-exam angles, and any example questions the lecturer provided. Re-invoke for each
-lecture; upload the resulting digest files back into the Project.
+Install each `.skill` file via Settings → Capabilities → Skills (or the Save-skill
+button when Claude hands you one).
 
-The digests are the **source of truth** study-tutor teaches from, so this step is the
-foundation — do it as you go through the semester, or in a batch before an exam.
+## The knowledge base — content vs. state
 
-### 3. Build a study plan (`lecture-digest`)
+One Claude Project per course. Its files split cleanly into **content** (what the
+course teaches) and **state** (where you stand) — keeping these separate is the
+core design rule of v2:
 
-When you know your exam date, ask for a plan. Claude picks **full-prep** (spread review
-across the days available) or **sprint** (triage into must-cover / worth-a-look /
-accept-risk) based on how much time versus material you have, and writes it to
-`study-plan.md`. Keep this in the Project.
+- **`digest-NN-*.md`** *(content)* — one per unit of lecture material: concepts,
+  relationships, formulas, likely exam angles (with the lecturer's own example
+  questions when they exist), and a figure index pointing into the source PDFs.
+  The source of truth the tutor teaches from.
+- **`exam-brief.md`** *(content)* — everything about the exam: format facts,
+  question archetypes, recurring past-exam tasks, professor hints, and your
+  personal watch-list of traps the tutor deliberately drills.
+- **`course-state.md`** *(state — the only state file)* — the topic registry
+  (permanent IDs `T01…`), your mastery status per topic, and the study schedule.
+  Kept deliberately tiny: topic names ≤ 8 words, notes ≤ 120 chars, schedule cells
+  hold topic IDs and pointers only. The file's own comment header carries the
+  binding editing rules, so any skill (or you) editing it sees them.
+- **Raw materials** — slide decks, scripts, sheets, past exams. Upload them and
+  **keep them in the project**: when a diagram matters, the tutor pulls the
+  original page and shows it, rather than describing or redrawing it.
 
-### 4. Run study sessions (`study-tutor`)
+## Getting started
 
-Ask to be quizzed, drilled, or mock-examined. A session reads your plan and digests,
-warms you up with recall questions, then works through topics using a mix of modes —
-explain-it-back, mock exams (using the lecturer's own question style when available),
-teach-it-back, and trick questions for topics you're already solid on. At the end it
-updates `topic-tracker.md` with your current mastery per topic. **Re-upload the updated
-tracker** so your next session starts from where you actually are.
+1. Create a Claude Project for the course.
+2. Run **uni-setup** ("set up my Advanced Mathematics course"). Paste the instructions
+   block it gives you into the Project's custom instructions; upload the
+   `course-state.md` it generates.
+3. Run **uni-import** on your first lecture file (one file per run). Upload the
+   digest and updated state file it hands back — and keep the raw deck in the
+   project too.
+4. From there: sessions with **uni-tutor**, assignment feedback with **uni-check**,
+   and when the exam approaches, **uni-import** the exam info, then **uni-plan**.
 
----
+**The one habit that matters: re-upload what a skill hands back.** Skills can read
+your project files but not write them — every run that changes state delivers the
+updated file as a download, and the next session is only as good as the state it
+starts from. If a skill can't find `course-state.md`, it will say so rather than
+silently starting fresh.
 
-## Track B — Ongoing coursework (`assignment-check`)
+## Model & effort recommendations
 
-Use this throughout the semester, whenever an assignment is due — no Project or digests
-required. When you've attempted a sheet, give Claude the **assignment sheet** and **your
-solution** (drop in the lecture slides too if you want it judged against the course's
-expected methods). It verifies the work independently rather than just plausibility-
-checking it, then flags issues by severity — outright wrong, likely deduction, or
-correct-but-loses-presentation-points — and points you toward the fix without writing
-the solution for you.
+Match the model to the step — spend reasoning where it pays:
 
-It's built to be invoked **repeatedly** as you work through a sheet: check a task, fix
-it, check the next one. It only ever reviews tasks you've actually attempted, so it's
-feedback on your own work rather than an answer key.
+| Task | Recommendation |
+|------|----------------|
+| **uni-import** | Mid-tier model, medium effort — mostly extraction and condensing; keeps per-lecture cost bounded. Be aware that for large lectures, this step can consume significant tokens. |
+| **uni-plan** | Strongest available model, high effort — triage and pacing logic; you plan rarely, so spend here. |
+| **uni-tutor** | Mid-tier model, high effort for the first message (it reads the plan, brief, and full digests and sets the agenda), then medium once the session is underway. |
+| **uni-check** | High effort whenever real verification is involved (proofs, complexity, derivations) — the value is careful step-by-step checking. Choose the model based on the complexity of the task. |
+| **uni-setup / uni-assess** | Anything — they're deliberately trivial. |
 
-If you happen to have a course Project set up for exam prep, assignment-check will
-happily use the slides and digests already in it — but it doesn't need them, and using it
-never requires building the knowledge base first.
+## Extending the framework
 
----
+v2 is built to grow without editing existing skills:
 
-## Recommended models
-
-These skills vary a lot in how much reasoning each step needs. Matching the model to the
-task keeps quality high where it matters and cost down where it doesn't:
-
-| Task | Recommended model |
-|------|------------------|
-| **Lecture digest** | **Sonnet 5, Medium** — mostly extraction and condensing; a mid-effort Sonnet handles it well and keeps per-lecture cost bounded |
-| **Building the study plan** | **Opus 5, High** — the triage and pacing logic benefits from the strongest reasoning; you build a plan rarely, so spend here |
-| **Tutor mode** | **Sonnet 5, High for the first message, then Medium** — the first turn does the heavy lifting (reading the plan and digests, setting the agenda); once the session is underway, Medium keeps it responsive and economical |
-
-Assignment-check is best run at a higher effort setting when correctness verification
-matters (proofs, complexity arguments), since the whole value is careful step-by-step
-checking rather than a quick read.
-
----
+- **New skills:** the conventions travel with the data — read the comment headers
+  of `course-state.md` and `exam-brief.md` for the editing contract (merge-never-
+  clobber, content budgets, status vocabulary, topic-ID permanence), follow the
+  read-only-mounts rule (write updates to outputs, remind re-upload), and add a
+  routing line to the project-instructions block.
+- Files written by the framework carry a `uni-v2` / `contract v2` marker so future
+  versions can detect the format.
+- The full specification of the framework and its skills is under `spec/` in the repo.
 
 ## Tips
 
-- **For exam prep: one course per Project, one lecture per digest run.** Keeps
-  everything focused and the knowledge base clean.
-- **Always re-upload the files study-tutor hands back** (updated tracker, and any
-  revised plan). They carry your mastery data forward — the next session is only as good
-  as the state it starts from.
-- **The digests are the ground truth for tutoring.** Richer, more accurate digests make
-  for sharper study sessions. If a digest is thin, the tutor feels it.
-- **assignment-check reviews your *own* attempts** — it's a learning tool, not an
-  answer service. It won't write solutions to tasks you haven't tried, and you can use
-  it any time without setting up a Project.
+- **One course per Project, one file per import run.** Keeps the knowledge base
+  clean and each digest focused.
+- **The digests are the ground truth for tutoring.** If a digest is thin, the
+  tutor feels it — re-import the unit rather than letting sessions improvise.
+- **Import exam intelligence the moment you get it** — past exams mid-semester,
+  the professor's exam remarks from the last lecture. `uni-plan` is only as
+  targeted as `exam-brief.md` is rich.
+- **Self-assessments are honest inputs, not tests.** Statuses seeded by
+  `uni-assess` carry a `(self)` marker; the plan schedules early verification for
+  self-rated-strong, high-value topics, and tutor sessions replace `(self)`
+  ratings with demonstrated evidence over time.
+- **uni-check reviews your *own* attempts** — a learning tool, not an answer
+  service. It won't write solutions to tasks you haven't tried.
+
+## License
+
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+(CC BY-NC-SA 4.0) — see `LICENSE`.
