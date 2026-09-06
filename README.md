@@ -1,9 +1,8 @@
-# Reusable Claude skills to help students study more effectively
+# A Claude plugin to help students study effectively
 
-**v2.0.0** — a framework of six composable skills that turn a Claude Project into a
-study hub for one course: a lean knowledge base built from your lecture material,
-exam intelligence collected in one place, and interactive sessions that always know
-where you stand.
+Six composable skills that turn a Claude Project into a study hub for one course:
+a lean knowledge base built from your lecture material, exam intelligence collected
+in one place, and interactive sessions that always know where you stand.
 
 Everything is **subject-agnostic** — the skills infer structure from your material
 rather than assuming a field, so they work for any course.
@@ -42,8 +41,8 @@ where you skipped the mid-semester sessions just start here.
 | **uni-tutor** | Interactive study sessions, with or without a plan | "Quiz me", "let's practice lecture 4", "mock exam" |
 | **uni-check** | TA-style review of your own attempted solutions | "Check my solution", "I'm stuck on task 3" |
 
-Install each `.skill` file via Settings → Capabilities → Skills (or the Save-skill
-button when Claude hands you one).
+The skills ship together as one plugin named `uni`, so installing it once gives you all
+of them (and updates them together). See [Install](#install).
 
 ## The knowledge base — content vs. state
 
@@ -53,8 +52,9 @@ core design rule of v2:
 
 - **`digest-NN-*.md`** *(content)* — one per unit of lecture material: concepts,
   relationships, formulas, likely exam angles (with the lecturer's own example
-  questions when they exist), and a figure index pointing into the source PDFs.
-  The source of truth the tutor teaches from.
+  questions when they exist), connections to earlier units (what this one builds
+  on or resolves), and a figure index pointing into the source PDFs. The source of
+  truth the tutor teaches from.
 - **`exam-brief.md`** *(content)* — everything about the exam: format facts,
   question archetypes, recurring past-exam tasks, professor hints, and your
   personal watch-list of traps the tutor deliberately drills.
@@ -66,6 +66,21 @@ core design rule of v2:
 - **Raw materials** — slide decks, scripts, sheets, past exams. Upload them and
   **keep them in the project**: when a diagram matters, the tutor pulls the
   original page and shows it, rather than describing or redrawing it.
+
+## Install
+
+Add this repository as a plugin marketplace once, install the `uni` plugin, and
+all six skills appear. They work in chat on the web, the Chat tab in Claude Desktop,
+and in Cowork. Plugins are available on all paid plans.
+
+**In Claude (web or Desktop):**
+
+1. Open **Customize** in the left sidebar, then the **Plugins** tab.
+2. Click **Add → Add marketplace**, choose *Add from a
+   repository*, and enter this repository's URL: `https://github.com/r-walloner/academic-ai-skills`
+3. Install the **uni** plugin from the list.
+
+To update once a new version is released, click **Update** on the marketplace.
 
 ## Getting started
 
@@ -97,18 +112,19 @@ Match the model to the step — spend reasoning where it pays:
 | **uni-check** | High effort whenever real verification is involved (proofs, complexity, derivations) — the value is careful step-by-step checking. Choose the model based on the complexity of the task. |
 | **uni-setup / uni-assess** | Anything — they're deliberately trivial. |
 
-## Extending the framework
+## Extending the plugin
 
 v2 is built to grow without editing existing skills:
 
-- **New skills:** the conventions travel with the data — read the comment headers
+- **New skills:** drop a folder with a `SKILL.md` into `skills/` — the plugin picks it
+  up, no manifest change needed. The conventions travel with the data — read the comment headers
   of `course-state.md` and `exam-brief.md` for the editing contract (merge-never-
   clobber, content budgets, status vocabulary, topic-ID permanence), follow the
   read-only-mounts rule (write updates to outputs, remind re-upload), and add a
   routing line to the project-instructions block.
-- Files written by the framework carry a `uni-v2` / `contract v2` marker so future
+- Files written by the plugin carry a `uni-v2` / `contract v2` marker so future
   versions can detect the format.
-- The full specification of the framework and its skills is under `spec/` in the repo.
+- The full specification of the plugin and its skills is under `spec/` in the repo.
 
 ## Tips
 

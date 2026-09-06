@@ -1,0 +1,49 @@
+name: Validate plugin
+
+# The repo IS the plugin: .claude-plugin/plugin.json at the root, skills under skills/.
+# Users install it by adding this repository as a marketplace, so a broken manifest or a
+# malformed SKILL.md frontmatter reaches them. Validate on every push.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node (for the Claude Code CLI)
+        uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Validate the plugin
+        run: claude plugin validate .claude-plugin/plugin.json --strict
+
+      - name: Validate the marketplace catalog
+        run: claude plugin validate .claude-plugin/marketplace.json --strict
+
+      - name: Check the version matches the release tag
+        if: github.event_name == 'release'
+        run: |
+          set -euo pipefail
+          manifest=.claude-plugin/plugin.json
+          if ! manifest_version=$(jq -re '.version' "$manifest"); then
+            echo "::error file=$manifest,title=Missing version::$manifest has no \"version\" field."
+            exit 1
+          fi
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$manifest_version" != "$tag" ]; then
+            echo "::error file=$manifest,title=Version does not match release tag::plugin.json version ($manifest_version) does not match release tag ($tag).%0AUsers only receive an update when this field changes — bump it before releasing."
+            exit 1
+          fi
+          echo "Version $manifest_version matches the release tag."

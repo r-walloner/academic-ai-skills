@@ -15,10 +15,9 @@ description: >-
 # uni-setup — scaffold a course project
 
 One course = one Claude Project. This skill turns an empty Project into a working
-hub for the uni- framework in a single run: the instructions block that routes
-requests to the right sibling skill, and the state file everything else reads and
-writes. It creates nothing else — digests and the exam brief come later, from
-`uni-import`, when there is real material to put in them.
+hub in a single run: the instructions block that routes requests to the right
+sibling skill, and the state file everything else reads and writes. Nothing else —
+digests and the exam brief come later, from `uni-import`, with real material.
 
 ## Before anything: check for an existing setup
 
@@ -30,14 +29,18 @@ block, verbatim from `assets/project-instructions.md`).
 
 ## Setup run
 
-1. **Ask once, together:** the course name, and the exam date if already known.
-   Nothing else — setup should take under a minute. If the student already gave the
-   course name in their message, don't re-ask; a missing exam date is fine (`—`).
+1. **Ask once, together:** the course name, the exam date if already known, and how
+   many units the course will have (lectures, chapters, weeks — whatever it is
+   organized by). Nothing else; don't re-ask what the student already said, and a
+   missing exam date is fine (`—`). Unknown unit count → `15 (assumed)`, one per
+   teaching week; say a later import can correct it. The count matters because it
+   sets how many topics each import registers — that is what keeps the topic table
+   short enough to self-assess in minutes.
 
 2. **Generate `course-state.md`** from `assets/course-state-template.md`: fill in
-   the course name, the exam line (or `—`), and today's date; keep the entire
-   comment header verbatim — it is the framework contract other skills and future
-   sessions rely on; leave the Topics table empty. Write it directly to
+   the course name, the exam line (or `—`), the `units:` line, and today's date; keep
+   the entire comment header verbatim — it is the framework contract other skills and
+   future sessions rely on; leave the Topics table empty. Write it directly to
    `/mnt/user-data/outputs/course-state.md` and present it.
 
 3. **Hand over the instructions block** — the full contents of
