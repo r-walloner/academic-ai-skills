@@ -1,10 +1,19 @@
-# Academic AI Skills — v2.0.0 Framework Specification
+# Academic AI Skills — v2.1.0 Framework Specification
 
-**Status:** build specification. This document is the single input for the next work step:
-writing the six v2 skills. It defines the architecture, the file formats, the shared
-contract, and a per-skill build brief. It deliberately does **not** contain the final
-SKILL.md texts — those get written from this spec, re-created from scratch rather than
-grown out of v1, with v1's proven material carried over where this spec says so.
+**Status:** build specification. v2.0.0 was built from this document and
+field-tested on a real 13-lecture course; a review of the resulting knowledge base
+surfaced defects in the import pipeline (§5.1). v2.1.0 fixes them. This document
+remains the single source of truth specifying the skills: it defines the architecture, the file
+formats, the shared contract, and a per-skill build brief. It deliberately does
+**not** contain the final SKILL.md texts — those get written from this spec.
+
+**Relationship to v2.0.0:** additive, no migration. Files written by v2.0.0 stay valid
+(the contract marker stays `v2`; a v2.1 skill reads a v2.0 digest or state file without
+conversion). What changes: digests gain a **Connections** section and provenance rules
+with teeth; the state file gains an optional `units:` header line; `uni-import` gains a
+validation loop, a reference file for exam material, and topic arithmetic that actually
+honors the course-wide budget; `uni-setup` asks for the expected unit count. §5.1 maps
+each field finding to its fix.
 
 **Relationship to v1:** v1 (three skills: `lecture-digest`, `study-tutor`,
 `assignment-check`) worked well in practice for one semester. v2 is a re-architecture,
@@ -96,6 +105,15 @@ transitions), because models reliably follow "when X happens, do Y" but cannot c
 turns, and re-injecting a small anchor restores instruction adherence nearly as well
 as a full re-read.
 
+**P9 — Verify mechanically before delivery.** Whatever a skill can reasonably check with a script,
+it checks with a script before presenting a file: figure references resolve, budgets
+hold, provenance markers survived the merge, existing state rows are untouched. This is
+the plan → validate → execute loop from Anthropic's skill-authoring guidance, and the
+v2.0.0 field test showed why it is not optional: three of thirteen digests shipped with
+inline figure references pointing at index entries that did not exist, and nothing in
+the pipeline could have noticed. A validator that fails loudly with the offending ID is
+cheaper than a tutor that fails silently mid-session.
+
 ---
 
 ## 3. Architecture overview
@@ -105,7 +123,7 @@ as a full re-read.
 | Skill | One-line job | Reads | Writes |
 |---|---|---|---|
 | `uni-setup` | Scaffold a course project: instructions block + initial state file | — | `course-state.md` (initial), project-instructions block (to paste) |
-| `uni-import` | Import ONE piece of course material into the knowledge base | the uploaded material, existing `course-state.md`, existing digests | a `digest-…` file **or** `exam-brief.md` update; topic rows appended to `course-state.md` |
+| `uni-import` | Import ONE piece of course material into the knowledge base | the uploaded material, existing `course-state.md`, the Open-questions/Connections sections of existing digests (script-extracted) | a `digest-…` file **or** `exam-brief.md` update; updated `course-state.md` |
 | `uni-assess` | Quick per-topic confidence self-assessment (minutes, not a session) | `course-state.md` | `course-state.md` (statuses seeded) |
 | `uni-plan` | Build/update the exam-prep schedule | `course-state.md`, `exam-brief.md`, digests (exam angles) | schedule section of `course-state.md` |
 | `uni-tutor` | Run an interactive study session | `course-state.md`, `exam-brief.md`, digests (full), source PDFs (figures) | `course-state.md` (statuses), `exam-brief.md` (watch-list appends) |
@@ -180,6 +198,7 @@ Rules for ANY skill or person editing this file:
 
 framework: uni-v2
 exam: [YYYY-MM-DD HH:MM | — if unknown]   ·   plan-mode: [none | full-prep | sprint]
+units: [N expected lectures/chapters/weeks | 15 (assumed)]
 updated: [YYYY-MM-DD]
 
 ## Topics
@@ -207,15 +226,35 @@ Field semantics:
   schedule: a schedule cell that may only hold IDs cannot swell.
 - **Unit** — the course's own structural unit (chapter, lecture, week — whatever the
   course uses; see §7.2 on unit detection).
-- **Topic** — a review-sized examinable theme, ≤ 8 words. The granularity rule
-  (v1's most valuable lesson, preserved): a row is something the student would rate
-  as a unit and a session would spend real time on — **not** one row per defined
-  term. ~3–6 per in-class lecture of content, calibrated to the course (§7.2).
+- **units (header)** *(new in v2.1)* — how many such units the course is expected to
+  have. Asked once by `uni-setup`; when the student doesn't know, `15 (assumed)` — one
+  per teaching week of a semester. `uni-import` derives its per-import topic target
+  from this number (§7.2 step 7) and may replace an `(assumed)` value when the material
+  reveals the real count (a course-overview or agenda slide), saying so. A v2.0.0 state
+  file without the line is read as `15 (assumed)` and gains the line on next write.
+- **Topic** — a review-sized examinable theme, ≤ 8 words *including any parenthetical*
+  (a clarifier that doesn't fit goes into the note or gets dropped). The granularity
+  rule (v1's most valuable lesson, preserved): a row is something the student would
+  rate as a unit and a session would spend real time on — **not** one row per defined
+  term. **How many rows:** derived from the course-wide budget, never from a
+  per-lecture constant. Design target ≈ 35 rows for a full course (typical range
+  25–45), **soft ceiling 50**. The ceiling exists for `uni-assess`'s sake: it walks
+  every row in a form the student fills in minutes, and a 60-row form is no longer a
+  form. The v2.0.0 rule "3–6 per lecture, calibrated to a 15–40 budget" produced 58
+  rows on a 13-lecture course because the per-lecture dial was the one that got
+  applied; v2.1 inverts the dependency (§7.2 step 7).
 - **Status / Last** — mastery record. `(self)` suffix distinguishes self-assessed
   from session-demonstrated evidence; `uni-plan` uses this for its overconfidence
   check, and `uni-tutor` treats `(self)`-strong topics with mild suspicion.
 - **Note** — ≤ 120 chars, e.g. an open question or "split from T07". A trap the
   student keeps falling into does NOT go here — it goes to the exam-brief watch-list.
+  **The one sanctioned import-time edit to an existing row:** when a later unit
+  resolves the open question a note records, `uni-import` may append a pointer of at
+  most four words — `→ resolved in digest-06` — still within the 120-char budget. Nothing
+  else in an existing row changes at import. The pointer is deliberately tiny: v1's
+  tracker died of notes that grew into prose, and a pointer that says *where* the
+  resolution lives is all the state file needs (the resolution itself lives in the
+  digest's Connections section, §4.3).
 
 ### 4.2 `exam-brief.md` — exam intelligence + personal watch-list
 
@@ -269,7 +308,7 @@ style, but never writes.
 ### 4.3 Digest files — `digest-<NN>-<slug>.md`
 
 One per imported unit of lecture material. Format carries over from v1's template
-with two additions. Sections:
+with three additions. Sections:
 
 1. **Title & source** — unit title, source filename, page range, import date.
 2. **Core concepts** — key terms, 1–3 sentence definitions, lecturer's own wording.
@@ -277,17 +316,53 @@ with two additions. Sections:
    words with a pointer to the figure index entry.
 4. **Formulas, algorithms, theorems, proofs** — short ones reproduced precisely
    (using the math conventions of §6.3); long derivations summarized with a pointer
-   to the exact slides.
-5. **Likely exam angles** — 3–6 bullets predicting question *types*; lecturer-provided
-   example questions captured **verbatim** and marked `(lecturer example)` — v1's
-   strongest-signal rule, preserved.
-6. **Open questions** — genuine gaps only.
-7. **Figure index** *(new)* — every figure worth ever showing the student again, one
-   line each: `F1 · [what it shows, ≤ 10 words] · source: <filename> p.<N>`. This is
-   what lets `uni-tutor` retrieve and present the *original* image in one command
-   instead of describing or (worse) regenerating it.
-8. **Topics registered** *(new)* — one line: `Topics: T07–T10 (see course-state.md)`.
+   to the exact slides. **Worked numeric examples are not transcribed** (v2's rule:
+   show the original, don't redraw it) — they get a figure-index line whose
+   description names what the numbers *are*, and, when the example is the kind an exam asks
+   the student to read, an exam angle that names that task (see 5).
+5. **Likely exam angles** — 3–8 bullets predicting question *types*; lecturer-provided
+   example questions captured **verbatim** and marked `(lecturer example)`. Two rules
+   with teeth, both added in v2.1 because the field test showed the signal leaking:
+   - **Provenance survives the merge.** Every lecturer-posed example is written down
+     the moment it is seen (a scratch file, §7.2 step 4), folded into this section
+     verbatim with its marker, and the validator checks that each one arrived. The
+     marker is the only thing that lets the tutor tell "the professor literally posed
+     this" from "the digest inferred this is likely" — v2.0 kept the questions and
+     lost the markers, which is the same as losing the questions.
+   - **Condensation never deletes an exam angle.** When a worked example, table, or
+     numeric output is moved out of the prose and into the figure index, the angle
+     that uses it *stays* and points at the figure ("interpret each value in F8 and judge it"). The figure index
+     preserves the data; only the exam angle preserves the prediction that the
+     student will be asked to read it. The 3–8 range is a shape, not a cap to cut to.
+6. **Open questions** — genuine gaps only: unclear points, things flagged "covered
+   later". These are what later imports check against (7).
+7. **Connections** *(new in v2.1)* — the cross-unit narrative, one line per link,
+   referencing digests and topic IDs: *builds on* (`builds on digest-03 (T12)`), *resolves* (`resolves digest-05 open question: <question here> (T21)`), and, only when the lecturer says so,
+   *feeds into* (`feeds into the <topic here> unit per the lecturer`). Written from the
+   material plus the prior digests' Open-questions and Connections sections, which
+   `uni-import` extracts by script rather than reading whole digests (§7.2 step 3).
+   Why this section exists: v1 kept this narrative in the tracker, where it was
+   valuable and where it also bloated the state file; v2.0 dismantled the tracker and
+   gave the narrative no home, so it vanished. This is the home — content, in a
+   content file. `uni-tutor` reads it to pick spaced-recap topics and to say "this
+   is the constraint lecture 5 flagged" when it's true. Write `— none —` when a unit
+   genuinely stands alone (a first lecture).
+8. **Figure index** — every figure worth ever showing the student again, one line
+   each: `F1 · [what it shows, ≤ 10 words] · source: <filename> p.<N>`. This is what
+   lets `uni-tutor` retrieve and present the *original* image in one command instead
+   of describing or (worse) regenerating it. **IDs come from one running counter
+   during reading and are never renumbered at merge** (§7.2 step 4); every inline
+   `F#` in the body must resolve to an index line, and the validator refuses a digest
+   where one doesn't.
+9. **Topics registered** — one line: `Topics: T07–T10 (see course-state.md)`.
    Cross-link for traceability; the state file remains the registry of record.
+
+**Notation inside digests.** Compact unicode is fine here (it saves space) as long
+as it does not modify or obscure the meaning of the formula. One
+convention that v2.0 got wrong: underscore means subscript (`A_norm`, `T_be`), middle
+dot means multiplication, and a subscript is never rendered as a product (v2.0 shipped
+`A·norm·A⁻¹` for `A_norm`, which changes the formula's meaning). When a symbol can't be
+written unambiguously in unicode, use `$$…$$` display math in the digest too.
 
 Naming: `digest-<NN>-<slug>.md` — NN = two-digit unit number in the course's own
 unit scheme; slug = 2–4 lowercase hyphenated words. Before naming, list existing
@@ -323,6 +398,22 @@ details*, re-writing the text:
 | `assignment-check/references/cs-pitfalls.md` | `uni-check/references/pitfalls-cs.md`, unchanged content, made an optional plug-in (§7.6) |
 | v1 tracker/plan *example files* (the state/content bleed) | negative examples informing §4.1 budgets and §4.2 sections — the exam-format table, archetypes, recurring tasks, and trap notes in those files show exactly what exam-brief.md must be able to hold |
 
+### 5.1 v2.0.0 field findings → v2.1.0 fixes
+
+A v2.0.0 knowledge base built from a real 13-lecture course was compared against the
+v1 knowledge base for the same course. The architecture held (state/content split,
+ID system, figure index, clean condensation on most lectures); the digest pipeline had
+measurable defects. Each one maps to a change in this revision:
+
+| Finding | Root cause | Fix | Where |
+|---|---|---|---|
+| 3 of 13 digests cite figure IDs absent from their own index (F10–F12, F13, F8) — the tutor's lookup fails silently | figure IDs assigned or renumbered at merge, no cross-check | running counter during reading; validator rejects dangling refs | §4.3 (8), §7.2 steps 4, 8 |
+| 58 topics against a stated 15–40 budget; 10 names of 9–10 words | per-lecture dial (3–6) applied instead of the course-wide one; parentheticals not counted | target derived from `units:`; soft ceiling 50; parentheticals count; validator | §4.1, §7.1, §7.2 step 7 |
+| `(lecturer example)` markers eroded — one left in the whole course | captured at merge time, marker treated as formatting | scratch file at first sight; validator confirms each landed with its marker | §4.3 (5), §7.2 step 4 |
+| one digest lost the exam angle whose worked example moved to the figure index | compression pressure landed on the section the spec said to keep rich | protection rule; range 3–8 | §4.3 (5) |
+| cross-lecture narrative ("resolves what lecture 5 flagged") lost with the tracker | narrative had no content home | Connections section; ≤ 4-word note pointer; tutor reads it | §4.1, §4.3 (7), §7.5 |
+| a subscript rendered as a product (`A·norm·A⁻¹` for `A_norm`) | unicode latitude with no subscript convention | notation convention | §4.3, §6.3 |
+
 ---
 
 ## 6. The framework contract (cross-cutting rules)
@@ -355,6 +446,8 @@ project instructions block. The full texts below are normative.
 > pointers only). When you catch yourself writing a formula, definition, question
 > text, or session narrative into `course-state.md`, stop — that content has a home:
 > course knowledge → digest; exam intelligence or a personal trap → `exam-brief.md`.
+> A cross-reference into a digest is at most a few words (`→ resolved in digest-06`);
+> the thing it points to lives in the digest.
 
 ### 6.3 Mathematical notation (output to the student)
 
@@ -365,7 +458,10 @@ project instructions block. The full texts below are normative.
 > Keep LaTeX simple (fractions, subscripts, standard operators); for a short inline
 > symbol where display math would be clumsy, prefer clean unicode (`T_be`, `V_dd`,
 > `⊨`) over inline LaTeX. Digests and state files may use compact unicode notation
-> freely — the rendering rule is about what the *student is shown in chat*.
+> freely — the rendering rule is about what the *student is shown in chat* — with
+> one convention: underscore is subscript, middle dot is multiplication, and a
+> subscript is never expanded into a product. If unicode can't say it unambiguously,
+> use `$$…$$` in the file as well.
 
 ### 6.4 Original figures over descriptions
 
@@ -406,7 +502,10 @@ paste into the Project and the initial course-state.md to upload. Do NOT use for
 importing lecture material (uni-import) or planning (uni-plan)."
 
 **Workflow:**
-1. Ask (once, together): course name, and exam date if already known. Nothing else.
+1. Ask (once, together): course name, exam date if already known, and how many
+   units the course will have — lectures, chapters, or weeks, whatever it's organized
+   by. Nothing else. If the student doesn't know the count, use `15 (assumed)` (one
+   unit per teaching week) and say that any later import can correct it.
 2. Generate `course-state.md` from the template: header filled, empty Topics table,
    no Schedule section. Write to outputs.
 3. Hand over `assets/project-instructions.md` **verbatim** as a copy-paste block
@@ -439,61 +538,116 @@ digested, summarized, condensed, imported, or added to their course project — 
 about the exam'. One file per run. Do NOT use for study sessions (uni-tutor), planning
 (uni-plan), or reviewing the student's own solutions (uni-check)."
 
-**Workflow — route by material type first:**
+**Structure (revised in v2.1 for progressive disclosure):** SKILL.md carries the
+routing decision and Route A in full — lecture material is what almost every run
+imports. Route B (exam-related material) lives in `references/exam-material.md` and is
+read only on the runs that need it; on a lecture-only run it is dead weight. Route A
+keeps the two pieces of exam handling that belong to lecture decks: capturing
+lecturer-posed example questions into the digest, and noticing stray exam-info slides
+(common in first and last lectures) so the reference gets opened for them.
 
-*A. Lecture material* (slides, script, notes, transcript) — the v1 pipeline, kept:
+**Workflow — route by material type first** (in SKILL.md):
+
+- Lecture material (slides, script, notes, transcript) → Route A.
+- Exam-related material (past exam, exam announcement, professor's exam info, notes
+  the student relays, a sheet offered as a question-style anchor) → open
+  `references/exam-material.md` and follow Route B.
+- Both in one file → Route A, then `references/exam-material.md` for the exam pages, same run, said
+  out loud.
+
+*Route A — lecture material → digest + topics* (SKILL.md):
+
 1. One file per run; if several uploaded, do one and say re-invoke.
-2. Cheap-first extraction: `scripts/pdf_triage.py triage` for PDFs (structural
-   vector-path/image-area signals, not char counts — keep v1's reasoning in a short
-   form); direct text reading for docx/md/txt. Scanned PDFs → all-visual note.
-3. Sub-batches of ~20–30 pages; rasterize only flagged/judged pages
-   (`pdf_triage.py raster`); write a fragment per sub-batch to `/home/claude`.
-4. Merge fragments into the digest per `assets/digest-template.md` (§4.3, including
-   Figure index and Topics registered). While reading, watch for lecturer-provided
-   example questions (capture verbatim) — and if any pages carry exam logistics or
-   format info (common in first/last lectures), route those to `exam-brief.md` too,
-   in the same run.
+2. **Cheap-first extraction:** `scripts/pdf_triage.py triage` for PDFs (structural
+   vector-path/image-area signals, not char counts); direct text reading for
+   docx/md/txt. Judgment cases → `references/pdf-notes.md`.
+3. **Prior context, cheaply:** run `scripts/prior_digests.py` on the project folder.
+   It prints, for every existing `digest-*.md`, the title line, the Open questions
+   and Connections sections, and the Topics registered line — typically well under
+   100 lines for a whole course. That is everything the new digest needs in order to
+   say "resolves the question digest-05 left open" and "builds on T12", without
+   reading thirteen digests into context. No existing digests → nothing to link.
+4. **Sub-batches of ~20–30 pages;** rasterize only flagged/judged pages
+   (`pdf_triage.py raster`); a fragment per sub-batch to `/home/claude/<unit>/`. Two
+   capture disciplines apply *while reading*, because both signals eroded in v2.0
+   when left to the merge:
+   - **Figures — one running counter for the whole import.** The moment a figure is
+     judged worth keeping, write its index line (`F<n> · what it shows · source:
+     <file> p.<N>`) into the fragment and cite it inline by that ID. The merge
+     concatenates index lines in order and never renumbers, so an inline `(F7)`
+     written in batch two still means F7 in the finished digest.
+   - **Lecturer examples — captured at first sight.** When the lecturer poses an
+     example or exam question, append it verbatim (with its page) to
+     `/home/claude/<unit>/lecturer-examples.md` right then. Exam logistics/format
+     slides in a lecture deck: note the pages for the reference (routing rule above);
+     don't digest them as course content.
 5. **Unit & scale detection:** infer the course's structural unit from the material
-   itself (chapter, lecture, week) and estimate how many in-class sessions it spans
-   (slide count, date markers, "Lecture 5+6" titles, agenda slides). Number the
-   digest in the course's own scheme.
-6. **Topic registration:** derive trackable topics and append them to
-   `course-state.md` as `new` rows with fresh sequential IDs. Granularity: the v1
-   rule verbatim in spirit — review-sized themes the student would rate as a unit,
-   ~3–6 per in-class session of content, scaled by the multi-session estimate, and
-   calibrated against a **course-wide budget of roughly 15–40 topics**: a course
-   with 4 fat chapters gets more topics per chapter than one with 15 thin ones.
-   When unsure, go coarser (splitting later is easy). Match loosely against existing
-   rows to avoid near-duplicates. Full guidance + v1's worked example (the ~20-term
-   KR lecture collapsing to ~6 rows) in `references/topics.md`.
-7. Write digest + updated state file to outputs, present both, remind re-upload.
+   (chapter, lecture, week) and how many in-class sessions it spans (slide count,
+   date markers, "Lecture 5+6" titles, agenda slides). Number the digest in the
+   course's own scheme. If an overview/agenda slide reveals the course's real unit
+   count and the state header still says `(assumed)`, correct `units:` and say so.
+6. **Merge fragments into the digest** per `assets/digest-template.md` (§4.3): every
+   section, including **Connections** (from step 3's output plus what the material
+   itself says it builds on), the figure index as concatenated, and every scratch
+   lecturer example folded into §Likely exam angles verbatim with its marker. Apply
+   the exam-angle protection rule while condensing.
+7. **Topic registration — arithmetic first, then judgment.** Target rows for this
+   import ≈ **(35 ÷ `units`) × sessions this material spans**, rounded, sanity range
+   1–10: with `units: 15` a single lecture registers 2–3 rows; with `units: 4` a fat
+   chapter registers ~9. Say the arithmetic in one line. Then the v1 granularity rule
+   chooses *which* rows (review-sized themes the student would rate as a unit; when
+   unsure, coarser). Names ≤ 8 words with parentheticals counted — a clarifier that
+   doesn't fit moves to the note or goes. Append as `new` with fresh sequential IDs;
+   match loosely against existing rows; for an existing row whose open-question note
+   this unit resolves, append the ≤ 4-word pointer (§4.1) and nothing else; every
+   other existing row stays byte-identical. If the table would pass the soft ceiling
+   of 50, say so and go coarser on this import. Full guidance + the worked example in
+   `references/topics.md`.
+8. **Validate, fix, repeat** (P9): run `scripts/check_import.py` on the new digest,
+   the updated state file, the pre-import state file, and the scratch directory.
+   *Errors* (must be fixed before delivery): inline `F#` with no index line; index
+   line without file or page; duplicate or non-sequential figure IDs; a scratch
+   lecturer example missing from the digest or present without its marker; `Topics
+   registered` IDs absent from the state file; topic name > 8 words; note > 120
+   chars; duplicate or non-sequential topic IDs; any pre-existing row changed beyond
+   the pointer exception. *Warnings* (judgment, say what you decided): rows this
+   import outside the computed target; table past 50; exam angles outside 3–8; empty
+   Connections when prior digests exist. The script names the offending ID or text
+   in every message. Re-run until clean; only then deliver.
+9. **Deliver:** write digest + updated state file to outputs, present both, remind
+   re-upload (and to keep the raw file in the project — figure retrieval depends on
+   it). If a schedule exists, note "run uni-plan to fold the new topics in."
 
-*B. Exam-related material* (past exam, exam announcement, professor hints relayed by
-the student, assignment sheet offered explicitly as a question-style anchor):
-1. Create `exam-brief.md` from `assets/exam-brief-template.md` if absent, else merge.
-2. Extract into the brief's sections: facts; question archetypes (typed, with one
-   example each, mapped to topic IDs where identifiable); recurring tasks (when the
-   same task appears across past exams, say so explicitly with sources — this is the
-   highest-value intelligence there is); priorities/hints.
-3. For past-exam PDFs, the triage/raster pipeline applies (exam sheets are often
-   figure-heavy); capture task figures in a small figure index inside the brief so
-   the tutor can present original exam figures.
-4. Write, present, remind re-upload.
+*Route B — exam-related material → exam-brief.md* (`references/exam-material.md`):
+the four v2.0 steps unchanged in substance — create the brief from
+`assets/exam-brief-template.md` or merge; extract facts, archetypes (typed, one
+example each, mapped to topic IDs), recurring tasks across past exams with sources,
+priorities/hints; triage/raster pipeline for figure-heavy past exams with a small
+figure index in the brief; only the *upcoming* exam's own date may set the state
+header's `exam:` line. Plus one v2.1 addition: the brief passes through
+`check_import.py` too (figure entries carry file + page; archetype topic IDs exist in
+the state file) before delivery.
 
-**Bundled files:** `scripts/pdf_triage.py` (v1 code unchanged);
-`assets/digest-template.md`; `assets/exam-brief-template.md`;
-`references/topics.md` (granularity + worked example); `references/pdf-notes.md`
-(the longer triage-interpretation guidance from v1 — most-pages-flagged,
-nothing-flagged, scanned, poppler-fallback cases — moved out of the main path).
+**Bundled files:** `scripts/pdf_triage.py` (unchanged from v2.0.0); `scripts/prior_digests.py`
+*(new)* — prints the cross-linking context of existing digests; `scripts/check_import.py`
+*(new)* — the validator, verbose by design, exits non-zero on errors;
+`assets/digest-template.md`; `assets/exam-brief-template.md`; `references/topics.md`; `references/pdf-notes.md`;
+`references/exam-material.md` *(new)* — Route B in full. Scripts are run, not read.
 
-**Budget:** SKILL.md ≤ 140 lines; the two references carry the depth.
+**Budget:** SKILL.md ≤ 160 lines with Route B out and the validation loop in; the
+references carry the depth. (v2.0.0 shipped at 156 lines against a 140 budget with
+both routes inline — moving Route B out pays for the new steps.)
 
 **Edge cases:** no `course-state.md` found anywhere → say so, offer to run
 `uni-setup` (invoke if user agrees; P7 fallback: create a fresh state file inline).
-Re-import of an existing unit → §4.3 rule. Material arrives after a plan exists →
-register topics as `new` and note "run uni-plan to fold new topics into the
+State file without a `units:` line (written by v2.0.0) → read as `15 (assumed)`,
+add the line on write. Re-import of an existing unit → §4.3 rule; the validator's
+byte-identical check still applies to untouched rows. Material arrives after a plan
+exists → register topics as `new` and note "run uni-plan to fold new topics into the
 schedule." Ambiguous type (e.g. a sheet with both content and exam info) → do both
-routes in one run, saying so.
+routes in one run, saying so. Validator still failing after two fix rounds on the
+same message → show the message to the student rather than delivering a file the
+tutor will trip over.
 
 ### 7.3 `uni-assess`
 
@@ -633,7 +787,10 @@ student's own assignment solutions (uni-check)."
 1. **Session start.** Read `course-state.md`; detect situation: plan exists →
    surface today's slice and on-track/behind; no plan (UC1) → default session =
    newest-digest topics + 1–2 related older topics due for spaced recap (pick by
-   status + last-reviewed + thematic ties). Read `exam-brief.md` if present
+   status + last-reviewed + thematic ties — **the newest digest's Connections
+   section names the ties**: a "builds on digest-03 (T12)" line is the recap
+   candidate, and a "resolves digest-05 open question" line is a teaching moment
+   worth one sentence when it comes up). Read `exam-brief.md` if present
    (question archetypes calibrate everything; watch-list items for today's topics
    get deliberately drilled). **Read the full digest files for today's topics — the
    whole file, not a project search snippet;** this is a hard rule (v1's biggest
@@ -659,7 +816,9 @@ student's own assignment solutions (uni-check)."
    (pause = resuming later today; update only what was covered; don't redistribute
    the plan; hand off with a one-line "still to do today").
 
-**Bundled files:** `references/pedagogy.md`, `references/session-shapes.md`.
+**Bundled files:** `references/pedagogy.md`, `references/session-shapes.md` (v2.1:
+the no-plan recap picks name the digest Connections section as their first source of
+thematic ties).
 
 **Budget:** SKILL.md ≤ 150 lines including the rules card; each reference ≤ 120
 lines. (v1 was a 335-line monolith; the split is the point.)
@@ -767,21 +926,36 @@ six-skill routing and the v2 file inventory.
 
 ## 9. Packaging
 
+The skills are packaged as **one plugin** (`uni`) distributed from this repository, which doubles as a single-entry plugin marketplace. The repository root is the plugin root:
+
 ```
-academic-ai-skills-2.0.0/
+academic-ai-skills/              # = marketplace root = plugin root
+├── .claude-plugin/
+│   ├── plugin.json              # name: uni · version · description · license
+│   └── marketplace.json         # one entry: uni, source "./"
 ├── README.md
+├── CHANGELOG.md
 ├── LICENSE                      # CC BY-NC-SA 4.0, unchanged
 └── skills/
     ├── uni-setup/    (SKILL.md, assets/course-state-template.md, assets/project-instructions.md)
-    ├── uni-import/   (SKILL.md, scripts/pdf_triage.py, assets/digest-template.md,
-    │                  assets/exam-brief-template.md, references/topics.md, references/pdf-notes.md)
+    ├── uni-import/   (SKILL.md, scripts/pdf_triage.py, scripts/prior_digests.py, scripts/check_import.py,
+    │                  assets/digest-template.md, assets/exam-brief-template.md,
+    │                  references/topics.md, references/pdf-notes.md, references/exam-material.md)
     ├── uni-assess/   (SKILL.md)
     ├── uni-plan/     (SKILL.md, references/planning.md)
     ├── uni-tutor/    (SKILL.md, references/pedagogy.md, references/session-shapes.md)
     └── uni-check/    (SKILL.md, references/pitfalls-cs.md)
 ```
 
-**README.md** (re-written): the three use cases with their skill compositions; the
+Rules this layout must respect (from the plugin spec): only `plugin.json` lives inside
+`.claude-plugin/` — `skills/` and everything else stay at the root; no top-level `bin/`
+directory (claude.ai rejects plugins that have one), so executables live in each skill's
+`scripts/`; a skill's own name comes from its `SKILL.md` frontmatter, and the plugin
+namespaces it (`uni:uni-import`). `version` in `plugin.json` is the update signal — a
+release that doesn't bump it never reaches installed users, so CI checks it against the
+release tag.
+
+**README.md**: the three use cases with their skill compositions; the
 six-skill table; the knowledge-base file inventory with the state/content split
 explained; the setup walkthrough (create project → uni-setup → paste + upload →
 uni-import per unit); the re-upload loop explained once, prominently; the
@@ -790,46 +964,85 @@ pitfalls plug-in for a new field); a model/effort recommendation table in the sp
 of v1's (import = mid-effort, plan = highest reasoning, tutor = high first message
 then mid, check = high when verifying proofs) phrased generically so it survives
 model renames. No migration section — v2 states plainly that it starts fresh.
+v2.1 touches: the setup step mentions the unit-count question and its default; the
+digest inventory line mentions connections. **CHANGELOG.md** gets a `v2.1.0`
+entry organized as fixes-from-field-test without naming topic specifics (§5.1),
+and the note that v2.0 files stay valid.
 
 ---
 
 ## 10. Acceptance scenarios (verify each skill against these when built)
 
-1. **Setup:** fresh chat, "set up my Embedded Systems course, exam June 30" → one
-   run produces a pasteable block + a valid `course-state.md` with filled header and
-   empty topic table; no other files.
-2. **Import, lecture:** a 60-page chapter deck spanning ~3 in-class lectures → one
-   digest numbered in the course's scheme, figure index present, ~8–14 topics (not
-   20+, not 4) appended as `new` with fresh IDs; existing rows byte-identical; no
-   in-place edit attempt on `/mnt/project` (the v1 wasted-cycle log must not appear).
-3. **Import, past exam:** a past-exam PDF → `exam-brief.md` created/merged with
+Written to be subject-agnostic: any course, any material. Numbers (dates, hours,
+counts) are structural, not domain-specific.
+
+1. **Setup:** fresh chat, "set up my [course] course, exam on [date], 12 lectures" →
+   one run produces a pasteable block + a valid `course-state.md` with filled header
+   (`units: 12`) and empty topic table; no other files. Without a unit count given:
+   the header reads `units: 15 (assumed)` and the reply says so.
+2. **Import, lecture:** a 60-page unit spanning ~3 in-class sessions, in a course
+   with `units: 4` → one digest numbered in the course's scheme; figure index
+   present and every inline `F#` resolves to it; ~8–10 topics appended as `new` with
+   fresh IDs (the arithmetic is stated: 35 ÷ 4 ≈ 9); names ≤ 8 words; existing rows
+   byte-identical; validator run visibly and clean; no in-place edit attempt on
+   `/mnt/project`. The same material as one unit in a `units: 15` course → 2–3
+   topics.
+3. **Import, connections:** unit N imported into a project whose digest for unit
+   N−1 lists an open question that unit N answers → `prior_digests.py` run before
+   merging; the new digest's §Connections carries a `resolves digest-<N−1> open
+   question: …` line; the T-row whose note held that question gains
+   `→ resolved in digest-<N>` and nothing else; the validator's byte-identical check
+   passes on every other row.
+4. **Import, provenance:** material with two places where the lecturer poses
+   example exam questions → both appear verbatim in §Likely exam angles marked
+   `(lecturer example)`; `lecturer-examples.md` exists in the scratch directory;
+   removing one marker by hand makes `check_import.py` fail naming the missing text.
+5. **Import, condensation:** a page with a worked numeric example (a result table,
+   a computed output the student would be asked to read) → not transcribed; the
+   figure index names what the numbers are; an exam angle names the interpretation
+   task and points at the figure; the digest's exam-angle count stays within 3–8
+   and no angle is dropped for lack of inline data.
+6. **Import, lecture material with exam pages:** a last-unit deck whose final pages
+   describe the exam format → digest produced via Route A; the skill opens
+   `references/exam-material.md` in the same run, creates/merges `exam-brief.md`
+   from those pages, and says it did both.
+7. **Import, past exam:** a past-exam PDF → `exam-brief.md` created/merged with
    archetypes mapped to topic IDs and a recurring-task entry when it matches an
-   earlier import; `course-state.md` is left untouched.
-4. **Assess:** 21 topics, all `new` → batch rating completes in ≤ 2 user replies;
+   earlier import; `course-state.md` is left untouched (in particular `exam:` is not
+   set from the paper's date); the brief passes the validator.
+8. **Validator, negative:** a digest whose body cites `(F11)` with no `F11` index
+   line fails `check_import.py` with a message naming `F11`; a state file with a
+   9-word topic name fails naming the row; the skill fixes and re-runs before
+   presenting anything.
+9. **Assess:** 21 topics, all `new` → batch rating completes in ≤ 2 user replies;
    statuses seeded with `(self)` dates; a session-verified `ok` from earlier is not
    downgraded without asking.
-5. **Plan:** "exam on the 24th, I have the 16th, 18th (−3h), 19th, 22nd, 24th
-   morning" → asks nothing already answered; prompts about missing exam-brief;
-   invokes uni-assess on cold statuses; produces a Schedule section whose cells
-   contain only IDs/hours/pointers; front-loads high-value topics; sprint tiers
-   named including accept-risk.
-6. **Tutor, UC1 (no plan):** after an import, "let's practice" → reads the full new
-   digest before the first question; agenda = new topics + 1–2 recap topics; at the
-   first block boundary the rules card is demonstrably re-read; session end updates
-   only covered topics and delivers the state file as a downloadable file.
-7. **Tutor, figures:** "show me that pipeline diagram from the slides" → the
-   original page is rasterized and presented; no textual re-description substitutes,
-   no redrawn diagram.
-8. **Tutor, math:** formulas shown as `$$…$$` display math; no single-`$` inline
-   math, none in backticks.
-9. **Check, mode A:** sheet in project + solution uploaded → pulls sheet and
-   relevant digest from the project unprompted; verdict-labeled per-task report;
-   correct tasks get one line; unattempted tasks only listed, never solved.
-10. **Check, mode B:** "I'm completely stuck on task 3" → asks what they tried,
+10. **Plan:** "exam on the 24th, I have the 16th, 18th (−3h), 19th, 22nd, 24th
+    morning" → asks nothing already answered; prompts about missing exam-brief;
+    invokes uni-assess on cold statuses; produces a Schedule section whose cells
+    contain only IDs/hours/pointers; front-loads high-value topics; sprint tiers
+    named including accept-risk.
+11. **Tutor, UC1 (no plan):** after an import, "let's practice" → reads the full new
+    digest before the first question; agenda = new topics + 1–2 recap topics, the
+    recap picks justified by the new digest's Connections lines; at the first block
+    boundary the rules card is demonstrably re-read; session end updates only
+    covered topics and delivers the state file as a downloadable file.
+12. **Tutor, figures:** "show me that diagram from the slides" → the original page
+    is rasterized and presented; no textual re-description substitutes, no redrawn
+    diagram.
+13. **Tutor, math:** formulas shown as `$$…$$` display math; no single-`$` inline
+    math, none in backticks; a digest symbol written `X_sub` is read and shown as a
+    subscript, never as a product.
+14. **Check, mode A:** sheet in project + solution uploaded → pulls sheet and
+    relevant digest from the project unprompted; verdict-labeled per-task report;
+    correct tasks get one line; unattempted tasks only listed, never solved.
+15. **Check, mode B:** "I'm completely stuck on task 3" → asks what they tried,
     gives one course-anchored foothold, does not solve the task even under "just
     tell me" pushback without the genuine-stuck signals.
-11. **Contract, everywhere:** any skill updating a canonical file writes to
+16. **Contract, everywhere:** any skill updating a canonical file writes to
     `/mnt/user-data/outputs/` directly, presents it, reminds re-upload; a
-    hand-entered note in the state file survives every skill's touch verbatim.
+    hand-entered note in the state file survives every skill's touch verbatim
+    (the import-time pointer append is the one sanctioned exception, and it
+    appends — it never rewrites).
 
 — end of specification —
