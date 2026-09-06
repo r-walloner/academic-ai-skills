@@ -1,4 +1,4 @@
-# Academic AI Skills — v2.1.0 Framework Specification
+# Academic AI Skills — v2.1.0 Plugin Specification
 
 **Status:** build specification. v2.0.0 was built from this document and
 field-tested on a real 13-lecture course; a review of the resulting knowledge base
@@ -24,7 +24,7 @@ and no migration tooling — v2 starts fresh with new courses.
 
 ---
 
-## 1. The three use cases (what the framework is for)
+## 1. The three use cases (what the plugin is for)
 
 Everything in this spec serves three student workflows:
 
@@ -46,7 +46,7 @@ Typical composition: `uni-import` (exam info / past exams, if not yet imported) 
 `uni-plan` (which invokes `uni-assess` when statuses are cold) → repeated `uni-tutor`
 sessions.
 
-The framework is **subject-agnostic** throughout: skills infer structure from the
+The plugin is **subject-agnostic** throughout: skills infer structure from the
 material, never assume a field. (The one field-specific artifact, the CS pitfalls
 checklist, is an optional plug-in reference — see §7.6.)
 
@@ -416,7 +416,7 @@ measurable defects. Each one maps to a change in this revision:
 
 ---
 
-## 6. The framework contract (cross-cutting rules)
+## 6. The plugin contract (cross-cutting rules)
 
 These rules bind every skill. They are implemented as: (a) the self-describing file
 headers of §4, (b) a short **Contract** block near the top of every SKILL.md —
@@ -474,11 +474,11 @@ project instructions block. The full texts below are normative.
 ### 6.5 Miscellany
 
 - Subject-agnostic: infer structure from material; never assume a field.
-- Every canonical file the framework writes states `framework: uni-v2` (state file)
+- Every canonical file the plugin writes states `framework: uni-v2` (state file)
   or `contract v2` (headers) so future versions can detect the format.
 - Skills stay scoped: no skill overrides global behavior or another skill's job.
 - Tone with the student: honest, specific, warm; no flattery; find weak spots before
-  the exam does (v1's line, kept as the framework's voice).
+  the exam does (v1's line, kept as the plugin's voice).
 
 ---
 
@@ -495,8 +495,8 @@ DO-NOTs, under 1024 chars.
 instructions block, generate the initial `course-state.md`, explain the loop.
 
 **Description draft:** "Set up a new Claude Project for a university course using the
-uni- study framework (v2). Use when a student starts a new course, says 'set up this
-course', 'create a course project', 'initialize the study framework', or asks how to
+uni- study plugin (v2). Use when a student starts a new course, says 'set up this
+course', 'create a course project', 'initialize the study plugin', or asks how to
 begin using the uni- skills for a class. Produces the project-instructions block to
 paste into the Project and the initial course-state.md to upload. Do NOT use for
 importing lecture material (uni-import) or planning (uni-plan)."
@@ -530,7 +530,7 @@ course material per run, detects its type, and routes it: lecture material → a
 + topic registration; exam-related material → `exam-brief.md` update.
 
 **Description draft:** "Import ONE piece of university course material into the
-uni- framework knowledge base: lecture slides, scripts, or notes (→ a compact digest +
+uni- plugin knowledge base: lecture slides, scripts, or notes (→ a compact digest +
 topic registration), or past exams, exam announcements, and professor exam hints
 (→ exam-brief update). Use whenever a student uploads course material and wants it
 digested, summarized, condensed, imported, or added to their course project — also
@@ -656,7 +656,7 @@ sessions start from something real instead of a wall of `new`. Standalone (run
 anytime) and invokable by `uni-plan`.
 
 **Description draft:** "Quick self-assessment of a student's confidence per course
-topic in the uni- framework: presents the topic list from course-state.md grouped by
+topic in the uni- plugin: presents the topic list from course-state.md grouped by
 unit, collects low/medium/high ratings in one or two batches, and seeds the status
 column. Takes a few minutes, not a study session. Use when a student says 'self
 assessment', 'rate my confidence', 'I don't know where I stand', when starting exam
@@ -691,7 +691,7 @@ capture as a ≤ 120-char note, keep moving.
 exam intelligence, real time availability, and honest statuses.
 
 **Description draft:** "Build or update an exam study plan (schedule) for a course in
-the uni- framework. Use when a student mentions an exam date, says 'make me a study
+the uni- plugin. Use when a student mentions an exam date, says 'make me a study
 plan', 'plan my revision', 'I have an exam on …', 'I'm behind, help me catch up', or
 wants the schedule updated after missed days or new material. Reads course-state.md,
 exam-brief.md, and digests; asks for exam date and available study time; writes the
@@ -747,7 +747,7 @@ rolling-recap pseudo-plan or defer; don't fabricate urgency. Exam already very c
 UC3 exam-prep sessions. The largest skill; the one that must survive long contexts.
 
 **Description draft:** "Run an interactive study/tutoring session against a course
-knowledge base built with the uni- framework (digests, course-state.md,
+knowledge base built with the uni- plugin (digests, course-state.md,
 exam-brief.md). Use whenever a student wants to be quizzed, drilled, tutored, or
 mock-examined: 'quiz me', 'study session', 'let's practice lecture 4', 'mock exam',
 'revise topic X', 'drill my weak topics', 'test me before the exam'. Works with or
@@ -883,7 +883,7 @@ general study sessions (uni-tutor)."
 
 **Bundled files:** `references/pitfalls-cs.md` (v1 content, unchanged) — reframed as
 a **plug-in**: SKILL.md says "consult a `pitfalls-*.md` reference matching the
-course's field for a second pass, if one exists" — so users extend the framework by
+course's field for a second pass, if one exists" — so users extend the plugin by
 dropping in `pitfalls-law.md` or `pitfalls-medicine.md` without touching SKILL.md.
 The SKILL.md itself stays subject-agnostic (v1's "the field is CS at master's level"
 line is removed).
