@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "uni",
+  "displayName": "Academic AI Skills",
+  "version": "2.1.0",
+  "description": "A Claude plugin to help students study more effectively.",
+  "homepage": "https://github.com/r-walloner/academic-ai-skills",
+  "repository": "https://github.com/r-walloner/academic-ai-skills",
+  "author": {
+    "name": "Robin Walloner",
+    "url": "https://github.com/r-walloner"
+  },
+  "license": "CC-BY-NC-SA-4.0",
+  "keywords": [
+    "education",
+    "university",
+    "tutoring",
+    "learning",
+    "study",
+    "lectures",
+    "exam-prep"
+  ]
+}

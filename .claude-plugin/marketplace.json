@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "academic-ai-skills",
+  "description": "A Claude plugin to help students study more effectively.",
+  "owner": {
+    "name": "Robin Walloner",
+    "url": "https://github.com/r-walloner"
+  },
+  "plugins": [
+    {
+      "name": "uni",
+      "source": "./",
+      "description": "A Claude plugin to help students study more effectively."
+    }
+  ]
+}
