@@ -16,19 +16,28 @@ Operational test: *would the student plausibly rate their confidence in this
 separately, and would a study session spend a real block of time on it?* A single
 definition covered in two minutes belongs inside a topic, not as its own row.
 
-## How many rows
+## How many rows — arithmetic first, then judgment
 
-Two dials, applied together:
+The count comes from the **course-wide budget**, never from a per-lecture constant.
+A full course should land around **35 rows** (typical range 25–45), with a **soft
+ceiling of 50**: `uni-assess` walks every row in a form the student fills in a few
+minutes, and a 60-row form is no longer a form. Courses package the same amount of
+content very differently — 4 fat chapters or 15 thin lectures — so the budget is
+spread over the course's own units, read from the `units:` header line of
+`course-state.md` (`15 (assumed)` when the student didn't know; treat a missing line
+as 15 too):
 
-1. **Per in-class session of content: ~3–6** for a broad session, as few as 1–2 for a
-   tightly focused one. If the imported material spans several in-class sessions
-   (see unit detection in SKILL.md), scale accordingly — a chapter deck covering ~3
-   lectures lands around 8–14 topics, not 4 and not 20.
-2. **Course-wide budget: roughly 15–40 topics total.** Courses package the same
-   amount of content very differently — one course has 4 fat chapters, another has
-   15 thin ones. Calibrate each import against the whole: with 4 chapters, each
-   chapter carries more rows; with 15, each carries fewer. Check how many rows exist
-   already and how much of the course remains.
+> **target for this import ≈ (35 ÷ units) × in-class sessions this material spans**,
+> rounded, sanity range 1–10.
+
+- `units: 15`, a single lecture → 2–3 rows.
+- `units: 4`, a chapter that took ~3 sessions → ~9 rows.
+- `units: 12`, a double lecture → ~6 rows.
+
+State the arithmetic in one line before choosing rows. Then check where the table
+stands: if this import would push it past 50, say so and go coarser on this one. The
+old "3–6 per lecture" rule of thumb is what produced 58 rows on a 13-lecture course —
+it's a sanity check for a single session's content at most, not a target.
 
 When unsure, go **coarser**: the student (or the tutor, mid-session) can split a row
 later when it turns out to hide two differently-rated things — that's cheap. Wading
@@ -49,7 +58,15 @@ reasoning, …) collapses to about six rows:
 - Automated theorem proving in practice (TPTP/Vampire)
 - LLMs vs symbolic reasoning
 
-Six rows, not twenty. Fewer would also be fine.
+Six rows, not twenty — right for a course of six to eight units. In a `units: 15`
+course the arithmetic says 2–3, and the same lecture collapses further:
+
+- Logic foundations: entailment, FOL syntax/semantics, formalization
+- Inference & theorem proving: resolution, (un)decidability, TPTP
+- Situation & temporal calculus
+
+The "LLMs vs symbolic" slides become a note on the first row, not a row. Fewer rows
+is not lost content — every term is still in the digest.
 
 ## Appending procedure (every lecture-material import)
 
@@ -61,9 +78,17 @@ Six rows, not twenty. Fewer would also be fine.
    facet of an existing topic goes into that row's note (≤ 120 chars), not a new row.
 4. Append the new topics with the next sequential IDs, status `new`, Last `—`, and
    at most one short open question in the note.
-5. Leave every existing row byte-identical — status, dates, and notes are the
-   student's mastery record. Never reset anything to `new`.
+5. **The one edit an import may make to an existing row:** when this unit resolves
+   the open question an older row's note records (you saw it in the
+   `prior_digests.py` output and wrote the `resolves` line in §Connections), append
+   `→ resolved in digest-NN` to that note — a pointer of a few words, still within
+   120 chars. The resolution itself lives in the digest. This is the whole exception:
+   v1's tracker died of notes that grew into prose.
+6. Leave every other existing row byte-identical — status, dates, and notes are the
+   student's mastery record. Never reset anything to `new`. `check_import.py` compares
+   against the pre-import file and refuses anything beyond the pointer append.
 
-Topic names: ≤ 8 words, in the lecturer's vocabulary, specific enough that the
+Topic names: ≤ 8 words **counting parentheticals** — a clarifier that doesn't fit
+moves to the note or goes — in the lecturer's vocabulary, specific enough that the
 student recognizes it on a list ("Resource-sharing protocols (NPP/PIP/PCP)", not
 "Chapter 3 part 2").
