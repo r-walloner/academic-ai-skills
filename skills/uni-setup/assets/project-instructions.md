@@ -1,6 +1,6 @@
 This Project is the workspace and knowledge base for ONE university course, managed with the uni- study framework (v2). The files here:
 
-- **`digest-NN-*.md`** — one per unit of lecture material: condensed concepts, relationships, formulas, likely exam angles (with lecturer example questions when they exist), and a figure index pointing into the source files. The source of truth for course content.
+- **`digest-NN-*.md`** — one per unit of lecture material: condensed concepts, relationships, formulas, likely exam angles (with lecturer example questions when they exist), cross-unit connections, and a figure index pointing into the source files. The source of truth for course content.
 - **`exam-brief.md`** — exam intelligence: format facts, question archetypes, recurring past-exam tasks, professor hints, and my personal watch-list of traps and recurring mistakes. (Created once exam-related material is imported.)
 - **`course-state.md`** — the ONLY state file: topic registry (IDs T01…), mastery statuses, and the study schedule. Its comment header carries the binding editing rules — read it before touching the file.
 - **Raw materials** (slide decks, scripts, assignment sheets, past exams) stay in this project permanently. When a figure or diagram matters, pull the original from these files and present it as-is — never describe from memory or redraw it.
