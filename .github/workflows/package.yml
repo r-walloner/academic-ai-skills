@@ -1,0 +1,68 @@
+name: Package plugin
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    uses: ./.github/workflows/validate.yml
+
+  package:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Package each skill
+        run: |
+          set -e
+          mkdir -p dist
+
+          if [ ! -d "skills" ]; then
+            echo "No skills/ directory found."
+            exit 1
+          fi
+
+          for dir in skills/*/; do
+            skill_name=$(basename "$dir")
+
+            # Skip if there's no SKILL.md (not a real skill dir)
+            if [ ! -f "${dir}SKILL.md" ]; then
+              echo "Skipping $skill_name (no SKILL.md)"
+              continue
+            fi
+
+            echo "Packaging $skill_name..."
+            # Zip the *contents* of the skill dir, not the dir itself,
+            # so the archive root matches what Claude expects.
+            (cd "$dir" && zip -r "../../dist/${skill_name}.skill" . )
+          done
+
+          ls -lah dist/
+
+      - name: Package full plugin
+        run: |
+          set -e
+          mkdir -p dist
+
+          plugin_name=$(jq -r '.name' .claude-plugin/plugin.json)
+
+          echo "Packaging plugin $plugin_name..."
+          # Zip the whole plugin, excluding repository metadata that is not
+          # part of the plugin itself.
+          zip -r "dist/${plugin_name}.zip" . \
+            -x ".git/*" ".github/*" "CHANGELOG.md" ".claude-plugin/marketplace.json" "dist/*" "spec/*"
+
+          ls -lah dist/
+
+      - name: Upload archives to release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            dist/*.skill
+            dist/*.zip
