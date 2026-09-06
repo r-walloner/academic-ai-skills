@@ -1,9 +1,8 @@
-# Reusable Claude skills to help students study more effectively
+# A Claude plugin to help students study effectively
 
-**v2.1.0** — a framework of six composable skills that turn a Claude Project into a
-study hub for one course: a lean knowledge base built from your lecture material,
-exam intelligence collected in one place, and interactive sessions that always know
-where you stand.
+Six composable skills that turn a Claude Project into a study hub for one course:
+a lean knowledge base built from your lecture material, exam intelligence collected
+in one place, and interactive sessions that always know where you stand.
 
 Everything is **subject-agnostic** — the skills infer structure from your material
 rather than assuming a field, so they work for any course.
@@ -113,19 +112,19 @@ Match the model to the step — spend reasoning where it pays:
 | **uni-check** | High effort whenever real verification is involved (proofs, complexity, derivations) — the value is careful step-by-step checking. Choose the model based on the complexity of the task. |
 | **uni-setup / uni-assess** | Anything — they're deliberately trivial. |
 
-## Extending the framework
+## Extending the plugin
 
 v2 is built to grow without editing existing skills:
 
-- **New skills:** drop a folder with a `SKILL.md` into `skills/` — the framework picks it
+- **New skills:** drop a folder with a `SKILL.md` into `skills/` — the plugin picks it
   up, no manifest change needed. The conventions travel with the data — read the comment headers
   of `course-state.md` and `exam-brief.md` for the editing contract (merge-never-
   clobber, content budgets, status vocabulary, topic-ID permanence), follow the
   read-only-mounts rule (write updates to outputs, remind re-upload), and add a
   routing line to the project-instructions block.
-- Files written by the framework carry a `uni-v2` / `contract v2` marker so future
+- Files written by the plugin carry a `uni-v2` / `contract v2` marker so future
   versions can detect the format.
-- The full specification of the framework and its skills is under `spec/` in the repo.
+- The full specification of the plugin and its skills is under `spec/` in the repo.
 
 ## Tips
 
