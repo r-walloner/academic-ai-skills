@@ -57,7 +57,8 @@ file's header carries the full rules.
      behind; that's the default agenda.
    - **No schedule** (mid-semester recap) → default session = the newest digest's
      topics + 1–2 older related topics due a spaced recap (pick by status, Last
-     date, and thematic ties). See `references/session-shapes.md` for shaping.
+     date, and thematic ties — the newest digest's **§Connections** names them).
+     See `references/session-shapes.md` for shaping.
 2. **Read `exam-brief.md`** if it exists: question archetypes calibrate every
    question you ask; watch-list items touching today's topics get worked in
    deliberately.

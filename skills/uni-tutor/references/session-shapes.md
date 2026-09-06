@@ -13,7 +13,11 @@ and wants to solidify it so exam prep goes faster later. Shape:
 2. **Plus 1–2 older topics due a spaced recap.** Pick by: status (`weak` first),
    Last date (longest ago first), and **thematic ties to the new material** —
    recapping the older topic the new one builds on doubles as scaffolding for it.
-   Say why you picked them ("T03 feeds directly into this").
+   The newest digest's **§Connections** section is the first place to look: a
+   "builds on digest-03 (T12)" line is a recap candidate, and a "resolves digest-05
+   open question" line is a teaching moment worth one sentence when the topic comes
+   up ("this is the gap lecture 5 left open"). Say why you picked them ("T03 feeds
+   directly into this").
 3. Same session structure as always: warm-up → agenda → modes per topic →
    boundaries → session end. Sizing: these sessions are typically shorter than
    exam-prep sessions; a lecture's worth plus recap in ~30–45 min is normal —
