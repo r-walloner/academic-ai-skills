@@ -21,6 +21,22 @@ the flag is a strong hint, not gospel. Skim the table and add pages your own rea
 of the extracted text suggests are figure-heavy (e.g. text that reads like axis
 labels or node names).
 
+## The math column (equation pages)
+
+Typeset equations extract as characters from the Mathematical Alphanumeric Symbols
+unicode block; the triage table counts them per page (`math` column, `*` at ≥ 8) and
+lists the equation pages. The marker is **not** a raster flag — it says "the formula
+fidelity rule applies here." Concretely: the text layer of an equation page loses
+grouping (parentheses vanish), flattens matrix and multi-line layout, and strips
+super-/subscript structure, so what extracts as `K rect K −1` could be a product, a
+subscripted matrix, or a function application. Transcribe from the text only when the
+formula is simple, in standard notation, and its structure obviously survived; for
+anything else — and always when you notice yourself unsure — rasterize that one page
+(`raster --pages N`) and transcribe what the image shows. Standard textbook formulas
+often come out right from mangled text because the model prior fills the gaps; the
+course's *own* notation is exactly where that safety net is absent, and exactly what
+the exam will use.
+
 ## Special cases the report calls out
 
 - **Most pages flagged (≥ ~70%)** — a diagram-heavy deck. Rasterizing the whole deck

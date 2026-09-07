@@ -65,8 +65,8 @@ course the arithmetic says 2–3, and the same lecture collapses further:
 - Inference & theorem proving: resolution, (un)decidability, TPTP
 - Situation & temporal calculus
 
-The "LLMs vs symbolic" slides become a note on the first row, not a row. Fewer rows
-is not lost content — every term is still in the digest.
+The "LLMs vs symbolic" slides fold into the first theme, not a row of their own.
+Fewer rows is not lost content — every term is still in the digest.
 
 ## Appending procedure (every lecture-material import)
 
@@ -75,20 +75,16 @@ is not lost content — every term is still in the digest.
    sectioning — group fine-grained terms under their parent theme.
 3. Match each candidate **loosely** against existing rows (same theme under
    different wording = same row; don't create near-duplicates). A genuinely new
-   facet of an existing topic goes into that row's note (≤ 120 chars), not a new row.
-4. Append the new topics with the next sequential IDs, status `new`, Last `—`, and
-   at most one short open question in the note.
-5. **The one edit an import may make to an existing row:** when this unit resolves
-   the open question an older row's note records (you saw it in the
-   `prior_digests.py` output and wrote the `resolves` line in §Connections), append
-   `→ resolved in digest-NN` to that note — a pointer of a few words, still within
-   120 chars. The resolution itself lives in the digest. This is the whole exception:
-   v1's tracker died of notes that grew into prose.
-6. Leave every other existing row byte-identical — status, dates, and notes are the
-   student's mastery record. Never reset anything to `new`. `check_import.py` compares
-   against the pre-import file and refuses anything beyond the pointer append.
+   facet of an existing topic is already covered — it lives in the new digest; the
+   row doesn't change.
+4. Append the new topics with the next sequential IDs, status `new`, Last `—`.
+5. Leave every existing row **byte-identical — no exceptions**. Statuses and dates
+   are the student's mastery record; resolutions of earlier open questions live in
+   the new digest's §Connections (`resolves digest-NN Qk: …`), never in this file.
+   Never reset anything to `new`. `check_import.py` compares against the pre-import
+   file and refuses any change to an existing row.
 
 Topic names: ≤ 8 words **counting parentheticals** — a clarifier that doesn't fit
-moves to the note or goes — in the lecturer's vocabulary, specific enough that the
+gets dropped (the digest carries the detail) — in the lecturer's vocabulary, specific enough that the
 student recognizes it on a list ("Resource-sharing protocols (NPP/PIP/PCP)", not
 "Chapter 3 part 2").

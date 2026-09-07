@@ -15,6 +15,7 @@ Usage (typical lecture import — run from the skill directory):
       --state   /mnt/user-data/outputs/course-state.md \\
       --prev    /mnt/project/course-state.md \\
       --scratch /home/claude/<unit> \\
+      --project /mnt/project \
       --sessions 1
 
 Exam-brief import:
@@ -26,6 +27,8 @@ Options:
   --prev     the course-state.md the run started from (untouched-rows check)
   --scratch  directory holding lecturer-examples.md (provenance check)
   --brief    an exam-brief.md to check instead of / in addition to a digest
+  --project  the project folder holding existing digests; enables the cross-digest
+             checks (resolves-citations point at real Q-IDs; slug consistency)
   --sessions how many in-class sessions the imported material spans (default 1),
              used for the topic-count target
   --ignore-figs  comma-separated F-IDs to ignore as inline references, for a digest
@@ -35,19 +38,22 @@ Exit codes: 0 clean (warnings allowed), 1 errors found, 2 usage/file problem.
 """
 import argparse
 import difflib
+import glob
 import os
 import re
 import sys
 
 # --- budgets (from the framework contract; see course-state.md header and spec §4) ---
 TOPIC_NAME_MAX_WORDS = 8      # parentheticals count
-NOTE_MAX_CHARS = 120
 TABLE_SOFT_CEILING = 50       # uni-assess walks every row; a longer form stops being a form
 COURSE_TARGET_ROWS = 35       # design target for a full course; per-import target derives from it
 DEFAULT_UNITS = 15            # one unit per teaching week when the student doesn't know
 IMPORT_ROWS_SANITY_MAX = 10   # more rows than this from one import is almost always too fine
-EXAM_ANGLES_RANGE = (3, 8)
-POINTER_MAX_WORDS = 4         # the "→ resolved in digest-06" exception: arrow + up to 4 words
+EXAM_ANGLES_RANGE = (3, 8)    # predicted angles only; (lecturer example) bullets don't count
+# A hedge next to a formula means the source wasn't actually read. The fix is to
+# rasterize the page and re-transcribe (or replace the entry with its figure-index
+# pointer if genuinely illegible) — never to ship the guess with a warning label.
+HEDGE_WORDS = ("schematic", "approximate", "approximately", "roughly", "presumably")
 FUZZY_MATCH_RATIO = 0.85      # similarity that still counts a lecturer example as found (not verbatim)
 
 STATUS_VALUES = {"new", "weak", "ok", "strong"}
@@ -179,12 +185,12 @@ def parse_state(text):
             continue
         # split on unescaped pipes only: "\|" inside a cell is a literal pipe (P=K[R\|t])
         cells = [c.strip() for c in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
-        if len(cells) != 6:
+        if len(cells) not in (5, 6):   # 6 = a legacy file with a Note column; read fine
             malformed.append((i, line.strip()))
             continue
         tid = cells[0]
         rows[tid] = dict(line=i, id=tid, unit=cells[1], topic=cells[2],
-                         status=cells[3], last=cells[4], note=cells[5], raw=line)
+                         status=cells[3], last=cells[4], raw=line)
     sched = section(sections(text), "schedule")
     return header, rows, malformed, (sched[2] if sched else None)
 
@@ -199,7 +205,7 @@ def parse_units(header):
 def check_state(new_text, prev_text, sessions, count_added=True):
     header, rows, malformed, sched = parse_state(new_text)
     for ln, raw in malformed:
-        err(f"state: malformed topic row at line {ln} (expected 6 cells: ID|Unit|Topic|Status|Last|Note): {raw}")
+        err(f"state: malformed topic row at line {ln} (expected 5 cells: ID|Unit|Topic|Status|Last): {raw}")
     if "units" not in header:
         warn("state: no 'units:' header line — treated as 15 (assumed); add the line on write")
     units, assumed, units_raw = parse_units(header)
@@ -215,9 +221,7 @@ def check_state(new_text, prev_text, sessions, count_added=True):
         words = len(r["topic"].split())
         if words > TOPIC_NAME_MAX_WORDS:
             err(f"state: {tid} topic name has {words} words (max {TOPIC_NAME_MAX_WORDS}, parentheticals count): "
-                f"\"{r['topic']}\" — shorten it or move the clarifier into the note")
-        if len(r["note"]) > NOTE_MAX_CHARS:
-            err(f"state: {tid} note is {len(r['note'])} chars (max {NOTE_MAX_CHARS}): \"{r['note'][:60]}…\"")
+                f"\"{r['topic']}\" — shorten it; the digest carries the detail")
         if r["status"] not in STATUS_VALUES:
             err(f"state: {tid} status \"{r['status']}\" not in {sorted(STATUS_VALUES)}")
         if not re.match(r"^(—|-|\d{4}-\d{2}-\d{2}(\s*\(self\))?)$", r["last"]):
@@ -238,19 +242,8 @@ def check_state(new_text, prev_text, sessions, count_added=True):
             for cell in ("unit", "topic", "status", "last"):
                 if pr[cell] != nr[cell]:
                     err(f"state: pre-existing row {tid} changed its {cell}: \"{pr[cell]}\" → \"{nr[cell]}\" "
-                        f"(existing rows stay byte-identical at import)")
-            if pr["note"] != nr["note"]:
-                if nr["note"].startswith(pr["note"]):
-                    suffix = nr["note"][len(pr["note"]):]
-                    ok = re.match(r"^\s*(?:[·;,]\s*)?→\s*\S+(?:\s+\S+){0,%d}\s*$" % (POINTER_MAX_WORDS - 1), suffix)
-                    if not ok:
-                        err(f"state: {tid} note changed beyond the pointer exception — only an appended "
-                            f"\"→ resolved in digest-NN\" (arrow + ≤{POINTER_MAX_WORDS} words) is allowed; got: \"{suffix.strip()}\"")
-                    else:
-                        info(f"state: {tid} note gained pointer \"{suffix.strip()}\"")
-                else:
-                    err(f"state: pre-existing row {tid} note was rewritten: \"{pr['note']}\" → \"{nr['note']}\" "
-                        f"(append a pointer; never rewrite)")
+                        f"(existing rows stay byte-identical at import — no exceptions; "
+                        f"a resolution belongs in the new digest's Connections, not here)")
         if psched is not None and psched.strip() != (sched or "").strip():
             err("state: the Schedule section changed — an import never touches the schedule "
                 "(new topics get folded in by uni-plan)")
@@ -288,7 +281,45 @@ def check_state(new_text, prev_text, sessions, count_added=True):
 
 # ---------- digest ----------
 
-def check_digest(text, state_rows, prev_text, scratch_dir, ignore_figs):
+def digest_open_qids(text):
+    """Q-IDs citable in a digest: explicit `Q<n> ·` IDs, or positional ones for a
+    legacy digest without IDs (same numbering prior_digests.py prints)."""
+    secs = sections(strip_html_comments(text))
+    op = next((s for s in secs if s[0].startswith("open question")), None)
+    if not op:
+        return set()
+    qids, pos = set(), 0
+    for b in bullets(op[2]):
+        if re.match(r"^-\s*—", b):
+            continue
+        pos += 1
+        m = re.match(r"^-\s*Q(\d+)\s*·", b)
+        qids.add(int(m.group(1)) if m else pos)
+    return qids
+
+
+def parse_scratch(scratch_dir):
+    """Read lecturer-examples.md: `- task: "…" (p.N)` / `- rhetorical: …` entries.
+
+    Untagged bullets (a scratch file written before the two classes existed, or a
+    forgotten tag) are treated as tasks — the safe direction, since a task must
+    reach the digest and the check will say so.
+    """
+    tasks, rhetoricals = [], []
+    sfile = os.path.join(scratch_dir, "lecturer-examples.md")
+    if not os.path.isfile(sfile):
+        return None, None, sfile
+    for b in bullets(open(sfile, encoding="utf-8", errors="replace").read()):
+        body = re.sub(r"^-\s*", "", b).strip()
+        m = re.match(r"(task|rhetorical)\s*:\s*(.+)$", body, re.I)
+        if m and m.group(1).lower() == "rhetorical":
+            rhetoricals.append(normalize(m.group(2)))
+        else:
+            tasks.append(normalize(m.group(2) if m else body))
+    return tasks, rhetoricals, sfile
+
+
+def check_digest(text, state_rows, prev_text, scratch_dir, ignore_figs, project_dir=None, digest_path=None):
     body_all = strip_html_comments(text)
     secs = sections(body_all)
     for name in REQUIRED_DIGEST_SECTIONS:
@@ -349,9 +380,21 @@ def check_digest(text, state_rows, prev_text, scratch_dir, ignore_figs):
             err(f"digest: inline reference F{fid} (line ~{cited[fid]}) has no index entry — index defines {have}. "
                 f"Add the index line (file + page) or fix the reference; never leave the tutor a dead pointer")
 
-    # --- notation: a subscript rendered as a product (A·norm·A⁻¹ for A_norm) ---
+    # --- formulas: hedges, page refs, and the subscript-as-product heuristic ---
     form = section(secs, "formulas")
+    non_examinable = bool(re.search(r"^\*\*Examinable:\*\*\s*no", text, re.M | re.I))
+    if non_examinable:
+        info("digest: title block says Examinable: no — exam-angle floor waived")
     if form:
+        for b in bullets(form[2]):
+            low = b.lower()
+            hit = next((h for h in HEDGE_WORDS if h in low), None)
+            if hit:
+                err(f"digest: hedged formula (\"{hit}\") — a hedge means the source page wasn't read. "
+                    f"Rasterize the page, transcribe what the image shows, and drop the hedge "
+                    f"(or replace the entry with its figure-index pointer if genuinely illegible): \"{b[:90]}\"")
+            if re.search(r"[=←→≈]", b) and not (has_page(b) or re.search(r"\bF\d+\b", b)):
+                warn(f"digest: formula bullet has no (p.N) or F# source reference: \"{b[:80]}\"")
         for i, line in enumerate(form[2].splitlines(), form[3] + 1):
             for tok in re.findall(r"[A-Za-z0-9⁻¹²³)\]]·([a-z]{2,6})·", line):
                 if tok not in KNOWN_FUNCTIONS:
@@ -359,29 +402,31 @@ def check_digest(text, state_rows, prev_text, scratch_dir, ignore_figs):
                          f"underscore (X_{tok}); a middle dot means multiplication")
                     break
 
-    # --- exam angles & lecturer examples ---
+    # --- exam angles & lecturer questions (two classes) ---
     ang = section(secs, "likely exam angles")
-    marked_blocks = []
     if ang:
         blocks = bullets(ang[2])
-        n = len([b for b in blocks if b.strip() and not b.strip().startswith("- —")])
+        real = [b for b in blocks if b.strip() and not b.strip().startswith("- —")]
+        marked = [b for b in real if "lecturer example" in b.lower()]
+        predicted = len(real) - len(marked)   # marked bullets are captured signal, not predictions
         lo, hi = EXAM_ANGLES_RANGE
-        if n < lo or n > hi:
-            warn(f"digest: {n} exam-angle bullet(s), expected {lo}–{hi} — remember condensation never deletes an angle "
-                 f"whose data moved to the figure index")
-        marked_blocks = [b for b in blocks if "lecturer example" in b.lower()]
-        info(f"digest: {len(marked_blocks)} lecturer example(s) marked in §Likely exam angles")
+        if predicted > hi:
+            warn(f"digest: {predicted} predicted exam angles (excluding {len(marked)} lecturer examples), "
+                 f"expected {lo}–{hi} — condense the predictions, never the captured examples")
+        elif predicted < lo and not non_examinable:
+            warn(f"digest: only {predicted} predicted exam angle(s) (excluding {len(marked)} lecturer examples), "
+                 f"expected {lo}–{hi} — remember condensation never deletes an angle whose data moved "
+                 f"to the figure index (an organizational unit can declare 'Examinable: no' instead)")
+        info(f"digest: {predicted} predicted angle(s) + {len(marked)} lecturer example(s) in §Likely exam angles")
     all_blocks = bullets(body_all)
     if scratch_dir:
-        sfile = os.path.join(scratch_dir, "lecturer-examples.md")
-        if not os.path.isfile(sfile):
+        tasks, rhetoricals, sfile = parse_scratch(scratch_dir)
+        if tasks is None:
             warn(f"digest: {sfile} not found — if the material had lecturer-posed questions they were not captured "
                  f"at first sight; if it had none, fine")
         else:
-            entries = [normalize(b) for b in bullets(open(sfile, encoding="utf-8", errors="replace").read())]
-            entries = [e for e in entries if e]
             norm_blocks = [(normalize(b), b) for b in all_blocks]
-            for e in entries:
+            for e in [e for e in tasks if e]:
                 hit = next(((nb, b) for nb, b in norm_blocks if e in nb), None)
                 if hit is None:
                     best = max(norm_blocks, key=lambda x: difflib.SequenceMatcher(None, e, x[0]).ratio(), default=None)
@@ -391,13 +436,84 @@ def check_digest(text, state_rows, prev_text, scratch_dir, ignore_figs):
                         warn(f"digest: lecturer example is present but not verbatim (similarity {ratio:.2f}): \"{e[:70]}…\" — "
                              f"restore the lecturer's exact wording")
                     else:
-                        err(f"digest: lecturer example from the scratch file is missing from the digest: \"{e[:90]}\"")
+                        err(f"digest: task-class lecturer example from the scratch file is missing from the digest: \"{e[:90]}\"")
                         continue
                 if "lecturer example" not in hit[1].lower():
                     err(f"digest: lecturer example is in the digest but NOT marked *(lecturer example)*: \"{e[:90]}\"")
-            info(f"digest: {len(entries)} scratch lecturer example(s) checked")
+            body_norm = normalize(body_all)
+            for e in [e for e in (rhetoricals or []) if e]:
+                if e in body_norm:
+                    err(f"digest: rhetorical-class prompt from the scratch file appears in the digest — rhetorical "
+                        f"teaching prompts are ignored entirely (not an exam angle, not an open question): \"{e[:90]}\"")
+            info(f"digest: scratch checked — {len(tasks)} task(s) must be in, {len(rhetoricals)} rhetorical(s) must be out")
     else:
-        info("digest: no --scratch given — lecturer-example provenance not verified")
+        info("digest: no --scratch given — lecturer-question provenance not verified")
+
+    # --- open questions: Q-IDs, one gap per bullet ---
+    op = section(secs, "open questions")
+    open_qids = set()
+    if op:
+        expected = 0
+        for b in [b for b in bullets(op[2]) if not re.match(r"^-\s*—", b)]:
+            expected += 1
+            m = re.match(r"^-\s*Q(\d+)\s*·\s*(.*)$", b)
+            if not m:
+                err(f"digest: open-question bullet without a 'Q<n> ·' ID (IDs are what later imports cite): \"{b[:80]}\"")
+                continue
+            qid = int(m.group(1))
+            open_qids.add(qid)
+            if qid != expected:
+                err(f"digest: open-question IDs out of sequence — expected Q{expected}, found Q{qid}")
+            body = m.group(2)
+            if len(body) > 220 or body.count(",") >= 3 or " and " in body and body.count(",") >= 2:
+                warn(f"digest: Q{qid} reads like a list — one specific gap per bullet, so a later unit can "
+                     f"resolve it 1:1 (roadmap previews are not open questions): \"{body[:80]}\"")
+
+    # --- connections: resolves lines cite an existing Q-ID ---
+    con = section(secs, "connections")
+    if con:
+        content = [b for b in bullets(con[2]) if not re.match(r"^-\s*—\s*none", b)]
+        prior_exists = project_dir is not None and glob.glob(os.path.join(project_dir, "digest-*.md"))
+        if not content and prior_exists:
+            warn("digest: §Connections is empty although earlier digests exist — run scripts/prior_digests.py and "
+                 "link what this unit builds on or resolves (or confirm it truly stands alone)")
+        for b in content:
+            if not re.search(r"digest-\d+|\bT\d+\b|per the lecturer", b):
+                warn(f"digest: Connections line names no digest or topic ID: \"{b[:80]}\"")
+            if re.search(r"\bresolves\b", b, re.I):
+                m = re.search(r"resolves\s+digest-(\d+)\s+Q(\d+)", b, re.I)
+                if not m:
+                    err(f"digest: 'resolves' line does not cite a Q-ID — the format is "
+                        f"'resolves digest-NN Qk: <answer in one clause>': \"{b[:90]}\"")
+                elif project_dir:
+                    dn, qn = int(m.group(1)), int(m.group(2))
+                    cands = sorted(glob.glob(os.path.join(project_dir, f"digest-{dn:02d}-*.md")) +
+                                   glob.glob(os.path.join(project_dir, f"digest-{dn}-*.md")))
+                    if not cands:
+                        err(f"digest: 'resolves digest-{dn:02d} Q{qn}' cites a digest that is not in the project")
+                    else:
+                        qids = digest_open_qids(open(cands[0], encoding="utf-8", errors="replace").read())
+                        if qn not in qids:
+                            have = ", ".join(f"Q{q}" for q in sorted(qids)) or "none"
+                            err(f"digest: 'resolves digest-{dn:02d} Q{qn}' — that digest has no Q{qn} "
+                                f"(its open questions: {have})")
+                else:
+                    warn("digest: 'resolves' citation not verified — pass --project to check it against the cited digest")
+
+    # --- slug consistency ---
+    if digest_path and project_dir:
+        m = re.match(r"digest-\d+-(.+)\.md$", os.path.basename(digest_path))
+        if m:
+            slug = m.group(1)
+            base = re.sub(r"-\d+$", "", slug)
+            for other in glob.glob(os.path.join(project_dir, "digest-*.md")):
+                om = re.match(r"digest-\d+-(.+)\.md$", os.path.basename(other))
+                if not om or os.path.basename(other) == os.path.basename(digest_path):
+                    continue
+                oslug = om.group(1)
+                if oslug != slug and re.sub(r"-\d+$", "", oslug) == base:
+                    warn(f"digest: slug '{slug}' differs from existing '{oslug}' only by a numeric suffix — "
+                         f"number every part of a multi-part topic consistently")
 
     # --- topics registered ---
     top = section(secs, "topics registered")
@@ -456,6 +572,7 @@ def main():
     ap.add_argument("--prev")
     ap.add_argument("--scratch")
     ap.add_argument("--brief")
+    ap.add_argument("--project")
     ap.add_argument("--sessions", type=float, default=1.0)
     ap.add_argument("--ignore-figs", default="")
     a = ap.parse_args()
@@ -470,7 +587,8 @@ def main():
         state_rows, _ = check_state(state_text, prev_text, a.sessions, count_added=bool(a.digest))
     if a.digest:
         ignore = {int(x.strip().lstrip("Ff")) for x in a.ignore_figs.split(",") if x.strip()}
-        check_digest(read(a.digest, "--digest"), state_rows, prev_text, a.scratch, ignore)
+        check_digest(read(a.digest, "--digest"), state_rows, prev_text, a.scratch, ignore,
+                     project_dir=a.project, digest_path=a.digest)
     if a.brief:
         check_brief(read(a.brief, "--brief"), state_rows)
 
