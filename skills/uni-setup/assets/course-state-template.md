@@ -3,18 +3,20 @@
 Rules for ANY skill or person editing this file:
 
 1. MERGE, NEVER CLOBBER. This file carries the student's mastery data across many
-   sessions. Read the existing version first; preserve every row, status, date, and
-   note; change only cells you have fresh evidence for; append new topics rather than
+   sessions. Read the existing version first; preserve every row, status, and date;
+   change only cells you have fresh evidence for; append new topics rather than
    regenerating the table. If you cannot find an existing version, say so explicitly
    before creating a fresh one — a silent fresh start can destroy a semester of state.
 
-2. CONTENT BUDGETS. Topic names ≤ 8 words (parentheticals count). Notes ≤ 120
-   characters, plain text. Schedule cells contain topic IDs, hours, and pointers only —
-   never formulas, definitions, question text, or session play-by-play. That material
-   has designated homes: course knowledge → the digest files; exam intelligence and
-   personal traps → exam-brief.md. If you catch yourself writing content into this
-   file, stop and put it where it belongs. A cross-reference into a digest is at most
-   a few words ("→ resolved in digest-06"); what it points to lives in the digest.
+2. CONTENT BUDGETS. Topic names ≤ 8 words (parentheticals count). Schedule cells
+   contain topic IDs, hours, and pointers only — never formulas, definitions,
+   question text, or session play-by-play. This file is a registry, not a summary:
+   it holds IDs, names, statuses, dates, and schedule cells, and nothing in it is
+   prose. Course knowledge lives in the digest files; exam intelligence and personal
+   traps in exam-brief.md; cross-unit links (what resolves what) in the digests'
+   Connections sections. If you catch yourself writing content into this file, stop
+   and put it where it belongs. The Topics table stays under ~50 rows: uni-assess
+   walks every row in a form the student fills in minutes.
 
 3. STATUS values: new | weak | ok | strong. "Last" is YYYY-MM-DD; add the suffix
    "(self)" when the evidence is the student's self-assessment rather than a
@@ -44,8 +46,8 @@ updated: [YYYY-MM-DD]
 
 ## Topics
 
-| ID | Unit | Topic | Status | Last | Note |
-|----|------|-------|--------|------|------|
+| ID | Unit | Topic | Status | Last |
+|----|------|-------|--------|------|
 
 <!-- The Schedule section is added by the uni-plan skill when a plan is made:
 
