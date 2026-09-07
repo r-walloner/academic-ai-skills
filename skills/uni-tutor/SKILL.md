@@ -92,8 +92,9 @@ file's header carries the full rules.
 
   then Read and show `/home/claude/fig.png`. (`pip install pymupdf
   --break-system-packages` once if missing.)
-- **Tangents:** one-line answer if quick, then steer back; anything deferred
-  becomes a ≤ 120-char note in the state file at session end.
+- **Tangents:** one-line answer if quick, then steer back; anything deferred is
+  named out loud at session end; a recurring trap goes to the exam-brief watch-list.
+  The state file takes only Status/Last updates.
 
 ## Block boundaries
 
