@@ -60,9 +60,9 @@ core design rule of v2:
   personal watch-list of traps the tutor deliberately drills.
 - **`course-state.md`** *(state — the only state file)* — the topic registry
   (permanent IDs `T01…`), your mastery status per topic, and the study schedule.
-  Kept deliberately tiny: topic names ≤ 8 words, notes ≤ 120 chars, schedule cells
-  hold topic IDs and pointers only. The file's own comment header carries the
-  binding editing rules, so any skill (or you) editing it sees them.
+  Kept deliberately tiny: topic names ≤ 8 words, schedule cells hold topic IDs and
+  pointers only. The file's own comment header carries the binding editing rules,
+  so any skill (or you) editing it sees them.
 - **Raw materials** — slide decks, scripts, sheets, past exams. Upload them and
   **keep them in the project**: when a diagram matters, the tutor pulls the
   original page and shows it, rather than describing or redrawing it.
