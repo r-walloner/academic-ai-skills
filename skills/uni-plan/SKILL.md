@@ -23,7 +23,7 @@ arithmetic, weighting rules, schedule format, and re-planning rules.
 **Contract:** project/upload mounts are read-only — write the updated
 `course-state.md` directly to `/mnt/user-data/outputs/`, present it, remind the
 student to re-upload. Merge, never clobber: the Schedule section is added/updated;
-the Topics table and every status/note in it stay untouched (the file header
+the Topics table and every status in it stays untouched (the file header
 carries the full rules). The schedule lives INSIDE `course-state.md` — never create
 a separate plan file.
 
