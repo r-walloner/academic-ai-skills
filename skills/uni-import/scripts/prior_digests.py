@@ -3,12 +3,12 @@
 prior_digests.py — print the cross-linking context of the digests that already exist.
 
 An import needs to know what earlier units left open and what they connect to, so
-the new digest can say "resolves the question digest-05 left open" and "builds on
-T12". Reading every existing digest into context to learn that is expensive (a
-whole course is tens of thousands of words); this script prints only the parts
-that matter for linking — per digest: the title line, the Open questions section,
-the Connections section, and the Topics registered line. A full course comes out
-at well under 100 lines.
+the new digest can write "resolves digest-05 Q2: …" and "builds on T12". Reading
+every existing digest into context to learn that is expensive (a whole course is
+tens of thousands of words); this script prints only the parts that matter for
+linking — per digest: the title line, the Open questions section (every question
+with a citable Q-ID), the Connections section, and the Topics registered line. A
+full course comes out at well under 100 lines.
 
 Usage:
   python prior_digests.py                     # searches /mnt/project, then uploads
@@ -59,6 +59,27 @@ def split_sections(text):
     return sections
 
 
+QID = re.compile(r"^-\s*Q(\d+)\s*·")
+
+
+def with_qids(lines):
+    """Ensure every open-question bullet carries a citable Q-ID.
+
+    New digests write them (`- Q1 · …`); digests from before Q-IDs get positional
+    ones (Q1, Q2, … in bullet order) so `resolves digest-NN Qk` works either way.
+    A `— none —` placeholder bullet is not a question and gets no ID.
+    """
+    out, n = [], 0
+    for line in lines:
+        s = line.strip()
+        if s.startswith("- ") and not re.match(r"^-\s*—", s):
+            n += 1
+            if not QID.match(s):
+                line = re.sub(r"^(\s*)-\s*", rf"\1- Q{n} · ", line, count=1) + "   (positional ID)"
+        out.append(line)
+    return out
+
+
 def strip_comments(lines):
     """Drop HTML comment blocks (template guidance) so only real content prints."""
     out, in_comment = [], False
@@ -99,14 +120,16 @@ def main():
                 print(f"    (no {key} section)" if key == "connections" else "    (no Open questions section)")
                 continue
             body = strip_comments(match[1])
+            if key == "open":
+                body = with_qids(body)
             print(f"    {match[0]}")
             if not body:
                 print("      (empty)")
             for line in body:
                 print("      " + line)
         print()
-    print("Use: 'resolves digest-NN open question: …' lines in the new digest's §Connections,")
-    print("and a '→ resolved in digest-NN' pointer on the matching topic row (nothing else).")
+    print("Use: 'resolves digest-NN Qk: <answer in one clause>' lines in the new digest's")
+    print("§Connections. The state file is never edited for a resolution.")
     return 0
 
 

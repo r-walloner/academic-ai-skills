@@ -32,19 +32,40 @@ $$…$$ rendering rule otherwise applies to what the student is shown in chat.
      lives ("full derivation: slides 22–25"). Worked NUMERIC examples are not
      transcribed: give them a figure-index line whose description says what the
      numbers are, and — if an exam could ask the student to read such an output —
-     an exam angle that names that task and points at the figure. -->
-- **[Name]:** [statement / formula / steps]. [Pointer if abbreviated.]
+     an exam angle that names that task and points at the figure.
+     Fidelity (a PDF's text layer destroys typeset math — grouping parens vanish,
+     layout flattens):
+     (1) Transcribe from the TEXT layer only when the formula is simple, in standard
+         notation, and its structure clearly survived extraction.
+     (2) RASTERIZE the page and transcribe from the image when the extracted text
+         shows matrix/multi-line layout, when you are inferring grouping rather
+         than seeing it, or when the notation is the course's own.
+     (3) Never hedge a formula. Writing "schematic"/"approximate"/"roughly" IS the
+         signal you haven't read the source — rasterize, transcribe, drop the
+         hedge. Genuinely illegible even rendered → don't transcribe; point at the
+         figure-index entry instead. The validator refuses hedged formulas.
+     Every transcribed formula ends with its source page: (p.N) or an F#. -->
+- **[Name]:** [statement / formula / steps] (p.[N]). [Pointer if abbreviated.]
 
 ## Likely exam angles
 <!-- 3–8 bullets predicting the TYPES of question this material could generate — not
      invented questions ("compare X and Y", "trace algorithm on an example",
-     "derive/prove Z", "interpret the output in F4"). Two rules:
-     (1) Lecturer-provided example questions are the strongest signal for question
-         style that exists: they arrive here VERBATIM from the scratch file
-         lecturer-examples.md, each marked *(lecturer example)*. The marker is what
-         lets the tutor tell "the lecturer posed this" from "the digest inferred
-         this" — dropping it is the same as dropping the question.
-     (2) Condensing never deletes an angle. If the data an angle relies on (a worked
+     "derive/prove Z", "interpret the output in F4"). Marked *(lecturer example)*
+     bullets sit here too but DON'T count toward the 3–8; the floor is waived when
+     the title block says Examinable: no. Three rules:
+     (1) Only POSED TASKS are lecturer examples — questions with a determinable
+         answer the student could be asked to produce. They arrive here VERBATIM
+         from the scratch file lecturer-examples.md (`task:` entries), each marked
+         *(lecturer example)*; dropping the marker is the same as dropping the
+         question.
+     (2) RHETORICAL teaching prompts — questions used as segues or thought-starters
+         — appear NOWHERE in the digest: not here, not in Open questions, whether
+         or not the slides answer them. Telling them apart:
+           task:       "Compute the result for the values given on this slide."
+           rhetorical: "But how would this transform?"
+           task:       "Exam question: state the two conditions and prove one."
+           rhetorical: "Try to imagine extending this to the general case…"
+     (3) Condensing never deletes an angle. If the data an angle relies on (a worked
          example, a table, a numeric output) moved to the figure index, the angle
          stays and points at the figure. The index keeps the data; only the angle
          keeps the prediction that the student will be asked about it. -->
@@ -53,23 +74,27 @@ $$…$$ rendering rule otherwise applies to what the student is shown in chat.
 - [Lecturer-provided example question, verbatim.]  *(lecturer example)*
 
 ## Open questions / to follow up
-<!-- Points that were unclear, glossed over, or flagged "covered later". Genuine gaps
-     only — these feed the topic notes in course-state.md, and later imports check
-     their material against them (see Connections). -->
-- [Open question.]
+<!-- Genuine gaps the MATERIAL leaves hanging: a point flagged "covered later", a
+     derivation referenced but not shown, an unclear or contradictory statement.
+     One specific gap per bullet, each with a per-digest ID (Q1, Q2, …) — the IDs
+     are what later imports cite when they resolve one. NEVER open questions:
+     rhetorical teaching prompts (ignored entirely) and roadmap/agenda previews —
+     an overview "teases" later topics by design; that is at most a Connections
+     "feeds into", usually nothing. -->
+- Q1 · [One specific gap.]
 
 ## Connections
 <!-- The cross-unit narrative — one line per link, naming the digest and topic IDs.
-     Three kinds: "builds on" (a prerequisite this unit assumes), "resolves" (an open
-     question an earlier digest recorded that this material answers — quote it
-     briefly), and, only when the lecturer says so, "feeds into" (a later unit this
-     one prepares). Source: what the material itself says, plus the Open questions /
-     Connections of existing digests as printed by scripts/prior_digests.py. This
-     section is content, so it lives here, not in the state file; the state file
-     gets at most a "→ resolved in digest-NN" pointer. Write "— none —" for a unit
-     that genuinely stands alone. -->
+     Three kinds: "builds on" (a prerequisite this unit assumes), "resolves" (a
+     specific open question an earlier digest recorded, cited BY ITS Q-ID), and,
+     only when the lecturer says so, "feeds into" (a later unit this one prepares).
+     Source: what the material itself says, plus the Open questions / Connections
+     of existing digests as printed by scripts/prior_digests.py (it prints every
+     question's citable Q-ID). Resolution linkage lives HERE and only here — the
+     state file is never edited for it. Write "— none —" for a unit that genuinely
+     stands alone. -->
 - builds on digest-[NN] ([T##]) — [what is assumed, a few words].
-- resolves digest-[NN] open question: [the question] — [the answer in one clause] ([T##]).
+- resolves digest-[NN] Q[k]: [the answer in one clause] ([T##]).
 - feeds into [later unit] per the lecturer.
 
 ## Figure index

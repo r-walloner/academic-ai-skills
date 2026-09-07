@@ -130,6 +130,20 @@ def signals_poppler(pdf, text_dir, pad):
 
 # ---------- flagging ----------
 
+# Typeset equations extract as characters from the Mathematical Alphanumeric
+# Symbols unicode block (U+1D400-U+1D7FF) — italic/bold math letters that ordinary
+# prose never produces. 8+ such characters means a real equation, not a stray
+# symbol: on the deck this was calibrated against, the threshold marked exactly
+# the equation pages (their counts were 19-37) with zero false positives, and a
+# single inline variable mention stays safely below it.
+MATH_GLYPHS_MIN = 8
+_MATH_BLOCK = re.compile("[\U0001D400-\U0001D7FF]")
+
+
+def count_math_glyphs(text):
+    return len(_MATH_BLOCK.findall(text))
+
+
 def flag_pages(pages, paths_thresh, img_area_thresh, char_thresh, img_count_thresh):
     flagged = []
     for pg in pages:
@@ -149,6 +163,15 @@ def flag_pages(pages, paths_thresh, img_area_thresh, char_thresh, img_count_thre
         pg["reasons"] = reasons
         if reasons:
             flagged.append(pg["page"])
+        # Math marker, separate from the raster flags: equations live on this page,
+        # so the formula fidelity rule applies when transcribing it (rasterize THIS
+        # page if grouping/notation is in doubt). It does not by itself mean raster.
+        try:
+            with open(pg["text_file"], encoding="utf-8", errors="replace") as f:
+                pg["math_glyphs"] = count_math_glyphs(f.read())
+        except OSError:
+            pg["math_glyphs"] = 0
+        pg["math"] = pg["math_glyphs"] >= MATH_GLYPHS_MIN
     return flagged
 
 
@@ -200,17 +223,25 @@ def cmd_triage(args):
         print("  rasterize and read, or OCR in bulk (see pdf-reading skill).")
     print(f"Per-page text: {text_dir}/page-NNN.txt   Manifest: {mpath}")
     print()
-    hdr = f"{'pg':>3} {'chars':>6} {'vpaths':>7} {'imgs':>5} {'img%':>5}  flagged / why"
+    hdr = f"{'pg':>3} {'chars':>6} {'vpaths':>7} {'imgs':>5} {'img%':>5} {'math':>5}  flagged / why"
     print(hdr); print("-" * len(hdr))
     for p in pages:
         vp = "-" if p["vector_paths"] is None else p["vector_paths"]
         iaf = "-" if p["image_area_frac"] is None else f"{p['image_area_frac']*100:.0f}"
+        mg = p.get("math_glyphs", 0)
+        mcol = f"{mg}*" if p.get("math") else (str(mg) if mg else "")
         mark = "**" if p["flagged"] else "  "
         why = ", ".join(p["reasons"]) if p["flagged"] else ""
-        print(f"{p['page']:>3} {p['chars']:>6} {str(vp):>7} {p['images']:>5} {iaf:>5}  {mark} {why}")
+        print(f"{p['page']:>3} {p['chars']:>6} {str(vp):>7} {p['images']:>5} {iaf:>5} {mcol:>5}  {mark} {why}")
     print()
     frac = len(flagged) / n if n else 0
     print(f"Flagged for visual inspection ({len(flagged)}/{n}): {flagged or 'none'}")
+    math_pages = [p["page"] for p in pages if p.get("math")]
+    if math_pages:
+        print(f"Equation pages (math glyphs in text layer): {math_pages}")
+        print("  Formulas on these pages: transcribe simple standard-notation ones from the")
+        print("  text; rasterize the page first when grouping is ambiguous, layout is")
+        print("  matrix/multi-line, or the notation is the course's own.")
     if frac >= 0.7:
         print("  NOTE: most pages flagged — this is a diagram-heavy deck. It may be")
         print("  simpler to rasterize the whole deck at lower DPI (e.g. -r 110) and skim.")

@@ -23,10 +23,10 @@ keeps each digest focused and the cost bounded; ask only if the choice is ambigu
   attempt in-place edits. To update a canonical file: read the current version
   (project, then uploads, then conversation), write the new one directly to
   `/mnt/user-data/outputs/<same-filename>`, present it, remind the student to re-upload.
-- **Merge, never clobber** `course-state.md` and `exam-brief.md`: preserve every
-  existing row, status, date, and note; append; the files' own headers carry the rules.
+- **Merge, never clobber** `course-state.md` and `exam-brief.md`: preserve every row,
+  status, and date; append; the files' own headers carry the rules.
 - State stays lean: content goes into digests and `exam-brief.md`, never into
-  `course-state.md` (topic ≤ 8 words, note ≤ 120 chars).
+  `course-state.md` (topic names ≤ 8 words; no prose in that file).
 
 ## Route by material type first
 
@@ -46,8 +46,9 @@ file inline — and say that uni-setup would do this properly).
 ### 1. Extract text cheaply first
 
 **PDF:** don't rasterize by default (~5x the tokens of text). The triage helper
-writes one text file per page and flags the pages worth a *visual* look, using
-structural signals (vector paths, embedded image area) that boilerplate can't fool:
+writes one text file per page, flags pages worth a *visual* look (vector paths,
+image area — signals boilerplate can't fool), and marks **equation pages**, which
+is a fidelity marker for step 3, not a raster flag:
 
 ```bash
 pip install pymupdf --break-system-packages   # once, if missing
@@ -64,10 +65,10 @@ flagged, scanned PDF, poppler fallback) read `references/pdf-notes.md`.
 python scripts/prior_digests.py            # searches /mnt/project, then uploads
 ```
 
-It prints, per existing digest, only the title, Open questions, Connections, and
-Topics line — under 100 lines for a whole course, and all the new digest needs to
-write "resolves the question digest-05 left open" or "builds on T12" in
-§Connections (step 5). No digests yet → §Connections is `— none —`.
+It prints, per existing digest, only the title, Open questions (each with its
+citable Q-ID), Connections, and Topics line — under 100 lines for a whole course,
+and all the new digest needs to write `resolves digest-05 Q2: …` or "builds on T12"
+in §Connections (step 5). No digests yet → §Connections is `— none —`.
 
 ### 3. Process in sub-batches; rasterize only what's needed
 
@@ -78,18 +79,26 @@ Read the images: `python scripts/pdf_triage.py raster <file.pdf> --pages 2,4,9-1
 
 Write a short digest **fragment** per sub-batch to `/home/claude/<unit>/` as you go —
 this keeps long decks from overflowing context and makes the final digest a stitch,
-not a from-scratch rewrite. Two things are captured *while reading*:
+not a from-scratch rewrite. Three things are captured *while reading*:
 
 - **Figures — one running counter for the whole import.** The moment a figure is
   worth keeping, write its index line into the fragment (`F<n> · what it shows ·
   source: \`file\` p.N`) and cite it inline by that ID. The merge concatenates index
   lines in order and never renumbers, so `(F7)` written in batch two still means F7
-  at the end. A reference to a figure the index doesn't define sends the tutor to a
-  page that doesn't exist — silently.
-- **Lecturer-posed example questions — captured at first sight.** Append each one
-  verbatim, with its page, to `/home/claude/<unit>/lecturer-examples.md` (`- "…"
-  (p.N)`). Strongest question-style signal there is; the validator checks that
-  every entry reached the digest with its `(lecturer example)` marker.
+  at the end. An uncited figure ID sends the tutor to a page that doesn't exist.
+- **Formulas — at the resolution they need.** The text layer destroys typeset math:
+  grouping parens vanish, layout flattens. Transcribe from text only when a formula
+  is simple, standard-notation, and its structure obviously survived; otherwise
+  rasterize that page first (matrix/multi-line layout, grouping you're inferring
+  rather than seeing, the course's own notation). A hedge forming ("schematic",
+  "roughly") is itself the trigger: stop, rasterize, read. Every formula ends `(p.N)`.
+- **Lecturer-posed questions — at first sight, in two classes.** Append each
+  verbatim with its page to `/home/claude/<unit>/lecturer-examples.md`:
+  `- task: "…" (p.N)` for a question with a determinable answer (exercise, "typical
+  exam question") — the strongest question-style signal there is — or
+  `- rhetorical: "…" (p.N)` for a segue or thought-starter. Only tasks reach the
+  digest, marked `(lecturer example)`; rhetorical prompts go **nowhere** — not an
+  angle, not an open question. The validator checks both directions.
 
 Exam logistics/format slides inside a lecture deck: note the pages; handle them via
 `references/exam-material.md` after the digest is done.
@@ -97,23 +106,26 @@ Exam logistics/format slides inside a lecture deck: note the pages; handle them 
 ### 4. Detect the unit and the scale
 
 From the material itself, determine:
-- **The course's structural unit** (chapter, lecture, week — whatever this course
-  uses). Number the digest in that scheme, matching any existing `digest-*` files;
-  only the first import sets the pattern.
+- **The course's structural unit** (chapter, lecture, week). Number the digest in
+  that scheme, matching existing `digest-*` files; the first import sets the pattern.
 - **How many in-class sessions the material spans** (slide count, date markers,
-  "Lecture 5+6" titles, agenda slides) — this scales the topic count in step 6.
-- If an overview/agenda slide reveals the course's real unit count and the state
-  header says `units: 15 (assumed)`, correct the line and say so.
+  "Lecture 5+6" titles) — this scales the topic count in step 6.
+- If an agenda slide reveals the real unit count and the header says
+  `units: 15 (assumed)`, correct the line and say so.
 
 ### 5. Merge fragments into the digest
 
 Use `assets/digest-template.md` — fill every section; its comments carry the rules.
-The ones that bite: figure IDs stay as assigned; every scratch lecturer example
-lands in §Likely exam angles verbatim with its marker; **condensing never deletes
-an exam angle** — if its data moved to the figure index, the angle stays and points
-at the figure; **§Connections** links this unit to earlier ones (*builds on* /
-*resolves* / *feeds into*) from step 2's output and what the material says. Name it
-`digest-<NN>-<slug>.md` (NN per the established pattern; slug 2–4 lowercase words).
+The ones that bite: figure IDs stay as assigned; every scratch `task:` lands in
+§Likely exam angles verbatim with its marker (marked bullets don't count toward the
+3–8; a unit the material calls non-examinable declares `Examinable: no` in the title
+block); **no hedged formula survives the merge**; **condensing never deletes an exam
+angle** — if its data moved to the figure index, the angle stays and points at the
+figure; open questions are `Q1 · one specific gap` each (an overview's roadmap is
+not one); **§Connections** links to earlier units (*builds on* / `resolves
+digest-NN Qk: …` / *feeds into*) from step 2's output. Name it
+`digest-<NN>-<slug>.md` (slug 2–4 lowercase words, unique — number every part of a
+multi-part topic).
 
 ### 6. Register topics in course-state.md
 
@@ -122,24 +134,27 @@ a per-lecture habit: **target ≈ (35 ÷ `units`) × sessions spanned**, rounded
 `units: 15` a single lecture gets 2–3 rows); say it in one line. Then granularity:
 review-sized themes the student would rate as a unit, never one row per term; when
 unsure, coarser. Names ≤ 8 words, parentheticals counted. Append with fresh
-sequential IDs, status `new`; match loosely against existing rows. The one edit
-allowed on an existing row: a `→ resolved in digest-NN` pointer appended to a note
-whose open question this unit answered; everything else stays byte-identical. Past
-~50 rows the table stops being self-assessable — go coarser.
+sequential IDs, status `new`; match loosely against existing rows. **Every
+pre-existing row stays byte-identical — no exceptions**; a resolution lives in the
+digest's §Connections, never in this file. Past ~50 rows the table stops being
+self-assessable — go coarser.
 
 ### 7. Validate, fix, re-run — then deliver
 
 ```bash
 python scripts/check_import.py --digest /mnt/user-data/outputs/digest-NN-slug.md \
     --state /mnt/user-data/outputs/course-state.md --prev /mnt/project/course-state.md \
-    --scratch /home/claude/<unit> --sessions <N>
+    --scratch /home/claude/<unit> --project /mnt/project --sessions <N>
 ```
 
-Every message names the offending ID or text. Errors (dangling figure references,
-missing file/page, a lecturer example missing or unmarked, budget breaches, a
-pre-existing row changed beyond the pointer) mean not deliverable: fix, re-run until
-`0 errors`. Warnings are judgment calls — say what you decided. If the same error
-survives two fix rounds, show it to the student rather than deliver a broken file.
+Every message names the offending ID or text, and every finding is yours to fix —
+not a question for the student. Errors (dangling figure refs, missing file/page, a
+`task:` example missing or unmarked, a rhetorical prompt in the digest, a hedged
+formula — rasterize and re-transcribe, or point at the figure if truly illegible —
+a missing or out-of-sequence Q-ID, a `resolves` citing a Q that doesn't exist,
+budget breaches, any changed pre-existing row) mean not deliverable: fix, re-run
+until `0 errors`. Warnings are judgment calls — say what you decided. If an error
+survives two fix rounds, show the student rather than deliver a broken file.
 
 ### 8. Deliver
 
@@ -158,9 +173,8 @@ hints; never set `exam:` from a past exam's date; validate with `--brief`; deliv
 
 - **Re-import of a unit that already has a digest:** replace the digest file (same
   name); topic rows keep their IDs and statuses — append genuinely new topics, ask
-  before removing any row that no longer matches the material.
-- **Unit out of order** (chapter 7 before 5): number by the course's scheme, not
-  by import order.
+  before removing a row that no longer matches the material.
+- **Unit out of order** (chapter 7 before 5): number by the course's scheme.
 - **Whole-semester PDF:** one unit per run via page ranges; ask where to start.
-- **State file without a `units:` line** (v2.0): read as `15 (assumed)`; add the
-  line when you write the file.
+- **State file without a `units:` line:** read as `15 (assumed)`; add the line when
+  you write the file.

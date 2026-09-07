@@ -1,19 +1,18 @@
-# Academic AI Skills — v2.1.0 Plugin Specification
+# Academic AI Skills — v2.2.0 Plugin Specification
 
-**Status:** build specification. v2.0.0 was built from this document and
-field-tested on a real 13-lecture course; a review of the resulting knowledge base
-surfaced defects in the import pipeline (§5.1). v2.1.0 fixes them. This document
-remains the single source of truth specifying the skills: it defines the architecture, the file
-formats, the shared contract, and a per-skill build brief. It deliberately does
-**not** contain the final SKILL.md texts — those get written from this spec.
-
-**Relationship to v2.0.0:** additive, no migration. Files written by v2.0.0 stay valid
-(the contract marker stays `v2`; a v2.1 skill reads a v2.0 digest or state file without
-conversion). What changes: digests gain a **Connections** section and provenance rules
-with teeth; the state file gains an optional `units:` header line; `uni-import` gains a
-validation loop, a reference file for exam material, and topic arithmetic that actually
-honors the course-wide budget; `uni-setup` asks for the expected unit count. §5.1 maps
-each field finding to its fix.
+**Relationship to v2.1.0:** one deliberate format change, otherwise additive. The topic
+table **loses its Note column** (five columns now: ID, Unit, Topic, Status, Last); the
+contract marker stays `v2`, state files written by v2.0/v2.1 are read compatibly (the
+Note cell is ignored) and converted to five columns on next write — their note content
+is not migrated, because everything a note legitimately held already lives in the
+digests. With the column goes v2.1's one sanctioned import-time row edit: existing rows
+are now byte-identical at import, **no exceptions**, and resolution linkage lives only
+in the digests' Connections sections. What else changes: formula transcription gains a
+fidelity rule and an unattended self-fix loop; lecturer-example capture becomes
+two-class (posed tasks in, rhetorical prompts ignored); open questions get per-digest
+IDs so resolutions are 1:1 and checkable; digests gain an `Examinable:` line; the
+triage script learns to spot equation pages; the validator learns all of it. §5.2 maps
+each finding to its fix.
 
 **Relationship to v1:** v1 (three skills: `lecture-digest`, `study-tutor`,
 `assignment-check`) worked well in practice for one semester. v2 is a re-architecture,
@@ -184,10 +183,11 @@ header text is specified in §6.1):
 <!-- COURSE STATE FILE — contract v2
 Rules for ANY skill or person editing this file:
 1. MERGE, NEVER CLOBBER. [full rule text per §6.1]
-2. CONTENT BUDGETS. Topic names ≤ 8 words. Notes ≤ 120 characters, plain text.
-   Schedule cells contain topic IDs and pointers only — never formulas, definitions,
-   question content, or session play-by-play. That material belongs in the digests
-   (course content) or exam-brief.md (exam intelligence / personal watch-list).
+2. CONTENT BUDGETS. Topic names ≤ 8 words. Schedule cells contain topic IDs and
+   pointers only — never formulas, definitions, question content, or session
+   play-by-play. This file is a registry, not a summary: no prose anywhere. Course
+   content belongs in the digests; exam intelligence and personal traps in
+   exam-brief.md.
 3. STATUS values: new | weak | ok | strong. "Last" is YYYY-MM-DD, suffix "(self)"
    when the evidence is self-assessment rather than a demonstrated session result.
 4. Topic IDs are permanent. Never renumber, reuse, or delete a row without the
@@ -203,9 +203,9 @@ updated: [YYYY-MM-DD]
 
 ## Topics
 
-| ID | Unit | Topic | Status | Last | Note |
-|----|------|-------|--------|------|------|
-| T01 | Ch.1 | [short examinable theme] | new | — | |
+| ID | Unit | Topic | Status | Last |
+|----|------|-------|--------|------|
+| T01 | Ch.1 | [short examinable theme] | new | — |
 
 ## Schedule
 _(section absent until uni-plan writes it)_
@@ -233,7 +233,7 @@ Field semantics:
   reveals the real count (a course-overview or agenda slide), saying so. A v2.0.0 state
   file without the line is read as `15 (assumed)` and gains the line on next write.
 - **Topic** — a review-sized examinable theme, ≤ 8 words *including any parenthetical*
-  (a clarifier that doesn't fit goes into the note or gets dropped). The granularity
+  (a clarifier that doesn't fit gets dropped — the digest carries the detail). The granularity
   rule (v1's most valuable lesson, preserved): a row is something the student would
   rate as a unit and a session would spend real time on — **not** one row per defined
   term. **How many rows:** derived from the course-wide budget, never from a
@@ -246,15 +246,18 @@ Field semantics:
 - **Status / Last** — mastery record. `(self)` suffix distinguishes self-assessed
   from session-demonstrated evidence; `uni-plan` uses this for its overconfidence
   check, and `uni-tutor` treats `(self)`-strong topics with mild suspicion.
-- **Note** — ≤ 120 chars, e.g. an open question or "split from T07". A trap the
-  student keeps falling into does NOT go here — it goes to the exam-brief watch-list.
-  **The one sanctioned import-time edit to an existing row:** when a later unit
-  resolves the open question a note records, `uni-import` may append a pointer of at
-  most four words — `→ resolved in digest-06` — still within the 120-char budget. Nothing
-  else in an existing row changes at import. The pointer is deliberately tiny: v1's
-  tracker died of notes that grew into prose, and a pointer that says *where* the
-  resolution lives is all the state file needs (the resolution itself lives in the
-  digest's Connections section, §4.3).
+
+**There is no Note column** *(removed in v2.2)*. v2.0/v2.1 had one, budgeted at 120
+chars for "an open question or split provenance", and the second field test showed
+what a free-text cell in a state file becomes anyway: a per-topic content preview —
+v1's tracker disease at reduced dosage. Everything a note legitimately held has a
+better home that already exists: open questions live in the digests (§4.3, with IDs),
+resolution linkage lives in the digests' Connections sections, a student's recurring
+trap lives in the exam-brief watch-list, and the topic name itself is the preview.
+With the column goes the pointer exception: **at import, every pre-existing row is
+byte-identical, no exceptions.** Skills read a legacy six-column file without fuss
+(the Note cell is ignored) and write five columns on the next write; the dropped note
+content is not migrated.
 
 ### 4.2 `exam-brief.md` — exam intelligence + personal watch-list
 
@@ -310,7 +313,12 @@ style, but never writes.
 One per imported unit of lecture material. Format carries over from v1's template
 with three additions. Sections:
 
-1. **Title & source** — unit title, source filename, page range, import date.
+1. **Title & source** — unit title, source filename, page range, import date, and,
+   only when it applies, an `**Examinable:** no ([reason])` line — set when the
+   material itself says the unit isn't exam-relevant (course logistics, an overview
+   lecture, a guest talk). The line is machine-read: it waives the exam-angle floor
+   (5) and tells `uni-plan` and `uni-tutor` to deprioritize the unit. Examinable
+   units carry no line at all; the field is not written as `yes`.
 2. **Core concepts** — key terms, 1–3 sentence definitions, lecturer's own wording.
 3. **Key relationships / processes** — how concepts connect; diagrams *described* in
    words with a pointer to the figure index entry.
@@ -319,25 +327,68 @@ with three additions. Sections:
    to the exact slides. **Worked numeric examples are not transcribed** (v2's rule:
    show the original, don't redraw it) — they get a figure-index line whose
    description names what the numbers *are*, and, when the example is the kind an exam asks
-   the student to read, an exam angle that names that task (see 5).
+   the student to read, an exam angle that names that task (see 5). Three fidelity
+   rules *(new in v2.2)*:
+   - **Read at the resolution the formula needs.** The text layer is fine for a
+     simple formula in standard notation whose structure survives extraction (a
+     linear chain, a textbook identity). Rasterize and read the page before writing
+     the entry when any of these hold: the extracted text shows matrix or multi-line
+     layout, grouping is ambiguous or parentheses may have been lost, the notation is
+     the course's own rather than standard, or you find yourself unsure. Rasterizing
+     every formula would be waste; rasterizing the ones you'd otherwise guess at is
+     the point. The triage report's math-page markers (§7.2 step 2) say where the
+     equations are.
+   - **No hedged formulas, ever.** "Schematic", "approximate", "roughly",
+     "presumably" next to a formula is the system saying it hasn't read the source —
+     the fix is to go read it (rasterize, transcribe, drop the hedge), not to ship
+     the guess with a warning label. The validator refuses a digest with a hedged
+     formula, and the fix loop is unattended (P9): rasterize → rewrite → re-run. If
+     the page is genuinely illegible even rendered, the formula is not transcribed at
+     all — the entry becomes a pointer to its figure-index line, which is an honest
+     "look at the original" instead of a plausible fabrication.
+   - **Every formula names its page.** Each transcribed formula ends with `(p.N)` or
+     an `F#` reference. This is what makes spot-checking possible at all.
 5. **Likely exam angles** — 3–8 bullets predicting question *types*; lecturer-provided
-   example questions captured **verbatim** and marked `(lecturer example)`. Two rules
-   with teeth, both added in v2.1 because the field test showed the signal leaking:
-   - **Provenance survives the merge.** Every lecturer-posed example is written down
-     the moment it is seen (a scratch file, §7.2 step 4), folded into this section
-     verbatim with its marker, and the validator checks that each one arrived. The
-     marker is the only thing that lets the tutor tell "the professor literally posed
-     this" from "the digest inferred this is likely" — v2.0 kept the questions and
-     lost the markers, which is the same as losing the questions.
+   example questions captured **verbatim** and marked `(lecturer example)`.
+   Three rules with teeth:
+   - **Only posed tasks are lecturer examples** *(sharpened in v2.2)*. A lecturer
+     example is a question with a determinable answer the student could be asked to
+     produce — an exercise, a "typical exam question", a "you should be able to…".
+     A **rhetorical teaching prompt** — a question used as a segue or to spark
+     thought ("But how would this transform?", "Try to imagine extending this to
+     the general case…", "Why is it called X?") — is pedagogy, not exam signal, and is
+     **ignored entirely**: not an exam angle, and not an open question either,
+     whether or not the slides answer it (open questions are for genuine gaps, see
+     6). The classification happens at first sight in the scratch file (§7.2 step
+     4), which records both classes so the validator can check that no rhetorical
+     prompt leaked into the digest. v2.1 captured every question mark on a slide;
+     the cost was rhetorical prompts wearing the strongest-signal marker.
+   - **Provenance survives the merge.** Every posed task is written down the moment
+     it is seen, folded into this section verbatim with its marker, and the
+     validator checks that each one arrived. The marker is the only thing that lets
+     the tutor tell "the professor literally posed this" from "the digest inferred
+     this is likely".
    - **Condensation never deletes an exam angle.** When a worked example, table, or
      numeric output is moved out of the prose and into the figure index, the angle
      that uses it *stays* and points at the figure ("interpret each value in F8 and judge it"). The figure index
      preserves the data; only the exam angle preserves the prediction that the
      student will be asked to read it. The 3–8 range is a shape, not a cap to cut to.
-6. **Open questions** — genuine gaps only: unclear points, things flagged "covered
-   later". These are what later imports check against (7).
+6. **Open questions** — genuine gaps only, **one specific gap per bullet, each with
+   a per-digest ID**: `Q1 · [the question]`. A genuine gap is something the material
+   itself leaves hanging: a point flagged "covered later", a derivation referenced
+   but not shown, an unclear or seemingly contradictory statement. Two exclusions
+   with v2.1 field evidence behind them: **rhetorical teaching prompts** never land
+   here (see 5 — they're ignored outright), and **roadmap/agenda previews are not
+   open questions**. An overview lecture "teases" every later topic by design;
+   logging that as a gap produced one catch-all bullet that eight of thirteen later
+   digests all claimed to resolve, which is a resolution signal worth nothing. If an
+   overview names what's coming, that is at most a Connections *feeds into* — usually
+   it is nothing. The IDs are what make resolutions 1:1: a later import resolves
+   `digest-05 Q2`, not "digest-05's open questions", and the validator can check the
+   citation against the actual digest (7, §7.2 step 8).
 7. **Connections** *(new in v2.1)* — the cross-unit narrative, one line per link,
-   referencing digests and topic IDs: *builds on* (`builds on digest-03 (T12)`), *resolves* (`resolves digest-05 open question: <question here> (T21)`), and, only when the lecturer says so,
+   referencing digests and topic IDs: *builds on* (`builds on digest-03 (T12)`), *resolves* (`resolves digest-05 Q2: <the answer in one clause> (T21)` — the Q-ID is
+   mandatory and must exist in that digest), and, only when the lecturer says so,
    *feeds into* (`feeds into the <topic here> unit per the lecturer`). Written from the
    material plus the prior digests' Open-questions and Connections sections, which
    `uni-import` extracts by script rather than reading whole digests (§7.2 step 3).
@@ -365,8 +416,11 @@ dot means multiplication, and a subscript is never rendered as a product (v2.0 s
 written unambiguously in unicode, use `$$…$$` display math in the digest too.
 
 Naming: `digest-<NN>-<slug>.md` — NN = two-digit unit number in the course's own
-unit scheme; slug = 2–4 lowercase hyphenated words. Before naming, list existing
-`digest-*` files and match the established pattern; only the first digest sets it.
+unit scheme; slug = 2–4 lowercase hyphenated words, **unique across the course**.
+Before naming, list existing `digest-*` files and match the established pattern; only
+the first digest sets it. Multi-part topics number *every* part (`…-algorithms-1`,
+`…-algorithms-2`). The validator warns when a new slug differs from an existing one
+only by a numeric suffix (§7.2 step 8).
 Re-importing a unit that already has a digest replaces the digest file (same name)
 but **preserves** existing topic rows/statuses in the state file, appending only
 genuinely new topics and asking before removing any.
@@ -414,6 +468,21 @@ measurable defects. Each one maps to a change in this revision:
 | cross-lecture narrative ("resolves what lecture 5 flagged") lost with the tracker | narrative had no content home | Connections section; ≤ 4-word note pointer; tutor reads it | §4.1, §4.3 (7), §7.5 |
 | a subscript rendered as a product (`A·norm·A⁻¹` for `A_norm`) | unicode latitude with no subscript convention | notation convention | §4.3, §6.3 |
 
+### 5.2 v2.1.0 field findings → v2.2.0 fixes
+
+The same course was imported from scratch with v2.1.0 and compared against both prior
+knowledge bases. The structural v2.1 fixes held (figure references resolve, budgets
+kept, markers present, Connections written); the residual defects are semantic, and
+their root causes were verified experimentally against the source deck:
+
+| Finding | Root cause | Fix | Where |
+|---|---|---|---|
+| a course-specific formula wrong in a third different way, hedged "(schematic)" | equation pages carry no images/vector figures, so triage never flagged them; the text layer destroys grouping (the parens of `rect(…)` vanish outright — verified against the deck), and the run transcribed glyph soup; standard formulas survived via model prior, so the damage concentrates in the lecturer's own notation | Fidelity rule (raster when grouping/notation is in doubt); math-glyph triage signal (verified: flags exactly the equation pages, zero false positives); hedge words = validator error with an unattended rasterize-and-rewrite fix loop; every formula names its page | §4.3 (4), §7.2 steps 2, 4, 8 |
+| rhetorical teaching prompts promoted to `(lecturer example)` exam angles; one digest at 10 angle bullets *because of* the marker fix, another at 2; a genuine slide-poses-but-never-answers gap vanished from Open questions | capture-at-first-sight had one class — every question mark on a slide qualified — and marked bullets counted against the 3–8 range | two-class capture (posed task vs. rhetorical prompt); rhetorical prompts ignored entirely; marked bullets excluded from the 3–8 count; `Examinable: no` waives the floor; validator checks the scratch classes both directions | §4.3 (1, 5), §7.2 steps 4, 8 |
+| one catch-all "everything is only teased here" open question that 8 of 13 later digests claim to resolve | an overview's roadmap logged as a gap; resolutions had no unit to bind to | roadmap previews banned from Open questions; per-digest Q-IDs; resolves lines cite one Q; validator verifies the citation against the cited digest | §4.3 (6, 7), §7.2 steps 3, 8 |
+| Note cells used as per-topic content previews; the resolved-pointer edit applied to the *new* row pointing backwards, in two formats | a free-text cell in a state file grows content (v1's disease, lower dose); the pointer rule left "which row" implicit | Note column removed; existing rows byte-identical at import with no exceptions; resolution linkage lives only in digest Connections | §4.1, §7.2 step 7 |
+| `digest-05-geometric-algorithms` next to `digest-06-geometric-algorithms-2` | slug pattern-matching had no check | slugs unique; every part of a multi-part topic numbered; validator warns on numeric-suffix-only collisions | §4.3 naming, §7.2 step 8 |
+
 ---
 
 ## 6. The plugin contract (cross-cutting rules)
@@ -442,12 +511,12 @@ project instructions block. The full texts below are normative.
 ### 6.2 State hygiene
 
 > Content lives in digests and `exam-brief.md`; state lives in `course-state.md` and
-> respects its budgets (topic ≤ 8 words, note ≤ 120 chars, schedule cells = IDs +
-> pointers only). When you catch yourself writing a formula, definition, question
-> text, or session narrative into `course-state.md`, stop — that content has a home:
-> course knowledge → digest; exam intelligence or a personal trap → `exam-brief.md`.
-> A cross-reference into a digest is at most a few words (`→ resolved in digest-06`);
-> the thing it points to lives in the digest.
+> respects its budgets (topic ≤ 8 words, schedule cells = IDs + pointers only). When
+> you catch yourself writing a formula, definition, question text, a summary, or
+> session narrative into `course-state.md`, stop — that content has a home: course
+> knowledge → digest; exam intelligence or a personal trap → `exam-brief.md`. The
+> state file holds IDs, names, statuses, dates, and schedule cells; nothing in it is
+> prose. *(v2.2: the Note column is gone — there is no free-text cell left to grow.)*
 
 ### 6.3 Mathematical notation (output to the student)
 
@@ -558,29 +627,47 @@ lecturer-posed example questions into the digest, and noticing stray exam-info s
 *Route A — lecture material → digest + topics* (SKILL.md):
 
 1. One file per run; if several uploaded, do one and say re-invoke.
-2. **Cheap-first extraction:** `scripts/pdf_triage.py triage` for PDFs (structural
-   vector-path/image-area signals, not char counts); direct text reading for
-   docx/md/txt. Judgment cases → `references/pdf-notes.md`.
+2. **Cheap-first extraction:** `scripts/pdf_triage.py triage` for PDFs. Three
+   structural signals per page, none foolable by boilerplate text: vector paths,
+   embedded-image area, and *(new in v2.2)* **math glyphs** — a count of characters
+   from the Mathematical Alphanumeric Symbols unicode block. Direct text reading
+   for docx/md/txt. Judgment cases → `references/pdf-notes.md`.
 3. **Prior context, cheaply:** run `scripts/prior_digests.py` on the project folder.
    It prints, for every existing `digest-*.md`, the title line, the Open questions
-   and Connections sections, and the Topics registered line — typically well under
-   100 lines for a whole course. That is everything the new digest needs in order to
-   say "resolves the question digest-05 left open" and "builds on T12", without
-   reading thirteen digests into context. No existing digests → nothing to link.
-4. **Sub-batches of ~20–30 pages;** rasterize only flagged/judged pages
-   (`pdf_triage.py raster`); a fragment per sub-batch to `/home/claude/<unit>/`. Two
-   capture disciplines apply *while reading*, because both signals eroded in v2.0
-   when left to the merge:
+   **with their Q-IDs**, the Connections sections, and the Topics registered line —
+   typically well under 100 lines for a whole course. That is everything the new
+   digest needs in order to write `resolves digest-05 Q2` and "builds on T12",
+   without reading thirteen digests into context. Legacy digests whose open
+   questions predate Q-IDs are printed with positional IDs (`Q1`, `Q2`, … in bullet
+   order) so they are citable the same way. No existing digests → nothing to link.
+4. **Sub-batches of ~20–30 pages;** rasterize figure-flagged/judged pages
+   (`pdf_triage.py raster`); a fragment per sub-batch to `/home/claude/<unit>/`.
+   Three capture disciplines apply *while reading*, because these signals erode when
+   left to the merge:
    - **Figures — one running counter for the whole import.** The moment a figure is
      judged worth keeping, write its index line (`F<n> · what it shows · source:
      <file> p.<N>`) into the fragment and cite it inline by that ID. The merge
      concatenates index lines in order and never renumbers, so an inline `(F7)`
      written in batch two still means F7 in the finished digest.
-   - **Lecturer examples — captured at first sight.** When the lecturer poses an
-     example or exam question, append it verbatim (with its page) to
-     `/home/claude/<unit>/lecturer-examples.md` right then. Exam logistics/format
-     slides in a lecture deck: note the pages for the reference (routing rule above);
-     don't digest them as course content.
+   - **Formulas — at the resolution they need.** Simple, standard-notation
+     formulas whose structure clearly survived extraction: transcribe from the text
+     layer, done. On a math-marked page, before writing any formula that shows
+     matrix/multi-line layout in the extracted text, has grouping you're inferring
+     rather than seeing, or uses the course's own notation: rasterize that one page
+     and transcribe from the image. If you notice a hedge forming ("schematic",
+     "approximately this") — that *is* the trigger; stop, rasterize, read. Every
+     transcribed formula ends with `(p.N)`.
+   - **Lecturer questions — captured at first sight, in two classes.** When the
+     lecturer poses a question, append it verbatim (with its page) to
+     `/home/claude/<unit>/lecturer-examples.md` right then, prefixed with its class:
+     `task:` for a posed task with a determinable answer (an exercise, a "typical
+     exam question", a "you should be able to…"), `rhetorical:` for a segue or
+     thought-starter ("But how does…?", "Try to imagine…", "Why is it called…?").
+     Only `task:` entries reach the digest (§4.3 (5)); `rhetorical:` entries are
+     recorded *so the validator can prove they went nowhere* — they are not exam
+     angles and not open questions. Exam logistics/format slides in a lecture deck:
+     note the pages for the reference (routing rule above); don't digest them as
+     course content.
 5. **Unit & scale detection:** infer the course's structural unit from the material
    (chapter, lecture, week) and how many in-class sessions it spans (slide count,
    date markers, "Lecture 5+6" titles, agenda slides). Number the digest in the
@@ -597,23 +684,34 @@ lecturer-posed example questions into the digest, and noticing stray exam-info s
    chapter registers ~9. Say the arithmetic in one line. Then the v1 granularity rule
    chooses *which* rows (review-sized themes the student would rate as a unit; when
    unsure, coarser). Names ≤ 8 words with parentheticals counted — a clarifier that
-   doesn't fit moves to the note or goes. Append as `new` with fresh sequential IDs;
-   match loosely against existing rows; for an existing row whose open-question note
-   this unit resolves, append the ≤ 4-word pointer (§4.1) and nothing else; every
-   other existing row stays byte-identical. If the table would pass the soft ceiling
-   of 50, say so and go coarser on this import. Full guidance + the worked example in
-   `references/topics.md`.
+   doesn't fit gets dropped (the digest carries the detail). Append as `new` with
+   fresh sequential IDs; match loosely against existing rows to avoid near-duplicates.
+   **Every pre-existing row stays byte-identical — no exceptions** (v2.2 removed
+   v2.1's pointer edit along with the Note column). If the table would pass the soft
+   ceiling of 50, say so and go coarser on this import. Full guidance + the worked
+   example in `references/topics.md`.
 8. **Validate, fix, repeat** (P9): run `scripts/check_import.py` on the new digest,
-   the updated state file, the pre-import state file, and the scratch directory.
+   the updated state file, the pre-import state file, the scratch directory, and —
+   new in v2.2 — the project folder (`--project`), so cross-digest citations can be
+   verified. Every finding is the agent's to fix.
    *Errors* (must be fixed before delivery): inline `F#` with no index line; index
    line without file or page; duplicate or non-sequential figure IDs; a scratch
-   lecturer example missing from the digest or present without its marker; `Topics
-   registered` IDs absent from the state file; topic name > 8 words; note > 120
-   chars; duplicate or non-sequential topic IDs; any pre-existing row changed beyond
-   the pointer exception. *Warnings* (judgment, say what you decided): rows this
-   import outside the computed target; table past 50; exam angles outside 3–8; empty
-   Connections when prior digests exist. The script names the offending ID or text
-   in every message. Re-run until clean; only then deliver.
+   `task:` entry missing from the digest or present without its marker; a scratch
+   `rhetorical:` entry appearing anywhere in the digest; a **hedge word next to a
+   formula** ("schematic", "approximate", "roughly", "presumably" — fix by
+   rasterizing the page and re-transcribing, or by replacing the entry with its
+   figure-index pointer if genuinely illegible); an open-question bullet without a
+   `Q<n> ·` ID, or with non-sequential IDs; a `resolves` line citing no Q-ID, or
+   citing a Q-ID that does not exist in the cited digest (checked against
+   `--project`); `Topics registered` IDs absent from the state file; topic name > 8
+   words; duplicate or non-sequential topic IDs;
+   *Warnings* (judgment, say what you decided): rows this import outside the
+   computed target; table past 50; predicted exam angles (marked bullets excluded)
+   outside 3–8 unless `Examinable: no`; a formula bullet without a `(p.N)` or `F#`
+   reference; an open-question bullet that reads like a list (multiple gaps in one
+   Q); empty Connections when prior digests exist; a slug that differs from an
+   existing digest's slug only by a numeric suffix. The script names the offending
+   ID or text in every message. Re-run until clean; only then deliver.
 9. **Deliver:** write digest + updated state file to outputs, present both, remind
    re-upload (and to keep the raw file in the project — figure retrieval depends on
    it). If a schedule exists, note "run uni-plan to fold the new topics in."
@@ -628,11 +726,14 @@ header's `exam:` line. Plus one v2.1 addition: the brief passes through
 `check_import.py` too (figure entries carry file + page; archetype topic IDs exist in
 the state file) before delivery.
 
-**Bundled files:** `scripts/pdf_triage.py` (unchanged from v2.0.0); `scripts/prior_digests.py`
-*(new)* — prints the cross-linking context of existing digests; `scripts/check_import.py`
-*(new)* — the validator, verbose by design, exits non-zero on errors;
-`assets/digest-template.md`; `assets/exam-brief-template.md`; `references/topics.md`; `references/pdf-notes.md`;
-`references/exam-material.md` *(new)* — Route B in full. Scripts are run, not read.
+**Bundled files:** `scripts/pdf_triage.py` (v2.2: + math-glyph signal);
+`scripts/prior_digests.py` (v2.2: prints Q-IDs with each open question);
+`scripts/check_import.py` (v2.2: + `--project`, hedge/Q-ID/class/slug/five-column
+checks, pointer checks removed); `assets/digest-template.md` (v2.2: Examinable line,
+fidelity rules, two-class capture, Q-IDs); `assets/exam-brief-template.md`;
+`references/topics.md` (v2.2: no note guidance, absolute row immutability);
+`references/pdf-notes.md` (v2.2: math-marker guidance); `references/exam-material.md`
+— Route B in full. Scripts are run, not read.
 
 **Budget:** SKILL.md ≤ 160 lines with Route B out and the validation loop in; the
 references carry the depth. (v2.0.0 shipped at 156 lines against a 140 budget with
@@ -683,7 +784,7 @@ student's own ratings, it does not verify them."
 
 **Edge cases:** empty topic table → nothing to assess; point to `uni-import`.
 Student volunteers commentary mid-rating ("T07 low because I never got recursion") →
-capture as a ≤ 120-char note, keep moving.
+acknowledge it, let it inform the rating, keep moving.
 
 ### 7.4 `uni-plan`
 
@@ -803,8 +904,9 @@ student's own assignment solutions (uni-check)."
    unknowns → back to the digest, and to the original slides when the digest points
    there. Figures: when a diagram or past-exam figure is the subject, rasterize the
    source page (digest/brief figure index → file + page) and present the original
-   image. Tangents: one-line answer if quick, then steer back; anything deferred
-   becomes a ≤ 120-char note in the state file.
+   image. Tangents: one-line answer if quick, then steer back; a tangent worth
+   returning to is named out loud at session end and, when it's a recurring trap,
+   appended to the exam-brief watch-list.
 3. **Boundaries.** v1's propose-don't-impose, kept whole: name the block done, offer
    1–2 *targeted* extra reps, show the refreshed one-line remaining agenda with
    time, advance only on confirmation. **This is also the re-anchoring checkpoint.**
@@ -978,8 +1080,8 @@ counts) are structural, not domain-specific.
 
 1. **Setup:** fresh chat, "set up my [course] course, exam on [date], 12 lectures" →
    one run produces a pasteable block + a valid `course-state.md` with filled header
-   (`units: 12`) and empty topic table; no other files. Without a unit count given:
-   the header reads `units: 15 (assumed)` and the reply says so.
+   (`units: 12`) and an empty **five-column** topic table; no other files. Without a
+   unit count given: the header reads `units: 15 (assumed)` and the reply says so.
 2. **Import, lecture:** a 60-page unit spanning ~3 in-class sessions, in a course
    with `units: 4` → one digest numbered in the course's scheme; figure index
    present and every inline `F#` resolves to it; ~8–10 topics appended as `new` with
@@ -988,61 +1090,79 @@ counts) are structural, not domain-specific.
    `/mnt/project`. The same material as one unit in a `units: 15` course → 2–3
    topics.
 3. **Import, connections:** unit N imported into a project whose digest for unit
-   N−1 lists an open question that unit N answers → `prior_digests.py` run before
-   merging; the new digest's §Connections carries a `resolves digest-<N−1> open
-   question: …` line; the T-row whose note held that question gains
-   `→ resolved in digest-<N>` and nothing else; the validator's byte-identical check
-   passes on every other row.
-4. **Import, provenance:** material with two places where the lecturer poses
-   example exam questions → both appear verbatim in §Likely exam angles marked
-   `(lecturer example)`; `lecturer-examples.md` exists in the scratch directory;
-   removing one marker by hand makes `check_import.py` fail naming the missing text.
+   N−1 lists `Q2 · [a question]` that unit N answers → `prior_digests.py` run before
+   merging; the new digest's §Connections carries a `resolves digest-<N−1> Q2: …`
+   line; **no row of the state file changes at all**; a `resolves` line citing a
+   Q-ID absent from the cited digest fails the validator by name.
+4. **Import, provenance (two classes):** material where the lecturer poses one
+   genuine task ("compute X for the given values") and one rhetorical segue ("but
+   what happens in 3D?") → the scratch file records `task: …` and `rhetorical: …`;
+   the task appears verbatim in §Likely exam angles marked `(lecturer example)`;
+   the rhetorical prompt appears **nowhere** in the digest — not as an angle, not as
+   an open question; planting it in either place makes `check_import.py` fail naming
+   the text, as does removing the task's marker.
 5. **Import, condensation:** a page with a worked numeric example (a result table,
    a computed output the student would be asked to read) → not transcribed; the
    figure index names what the numbers are; an exam angle names the interpretation
-   task and points at the figure; the digest's exam-angle count stays within 3–8
-   and no angle is dropped for lack of inline data.
-6. **Import, lecture material with exam pages:** a last-unit deck whose final pages
+   task and points at the figure; no angle is dropped for lack of inline data.
+6. **Import, formula fidelity:** a page whose extracted text layer shows a
+   multi-line/matrix equation with grouping destroyed (parentheses lost) → the run
+   rasterizes that page before writing the entry and transcribes the structure the
+   *image* shows, with `(p.N)` appended; a digest in which that formula is hedged
+   "(schematic)" fails the validator, and the run fixes it unattended — rasterize,
+   re-transcribe, re-run — with no question posed to the student. A simple
+   single-line formula in standard notation is transcribed from the text layer with
+   no raster. The triage table marks the equation pages.
+7. **Import, overview unit:** a first-lecture overview that names all later topics
+   and declares itself organizational → the digest carries `Examinable: no`; the
+   roadmap appears (at most) as Connections *feeds into* lines, **not** as an open
+   question; the exam-angle floor is waived without a validator warning.
+8. **Import, lecture material with exam pages:** a last-unit deck whose final pages
    describe the exam format → digest produced via Route A; the skill opens
    `references/exam-material.md` in the same run, creates/merges `exam-brief.md`
    from those pages, and says it did both.
-7. **Import, past exam:** a past-exam PDF → `exam-brief.md` created/merged with
+9. **Import, past exam:** a past-exam PDF → `exam-brief.md` created/merged with
    archetypes mapped to topic IDs and a recurring-task entry when it matches an
    earlier import; `course-state.md` is left untouched (in particular `exam:` is not
    set from the paper's date); the brief passes the validator.
-8. **Validator, negative:** a digest whose body cites `(F11)` with no `F11` index
-   line fails `check_import.py` with a message naming `F11`; a state file with a
-   9-word topic name fails naming the row; the skill fixes and re-runs before
-   presenting anything.
-9. **Assess:** 21 topics, all `new` → batch rating completes in ≤ 2 user replies;
-   statuses seeded with `(self)` dates; a session-verified `ok` from earlier is not
-   downgraded without asking.
-10. **Plan:** "exam on the 24th, I have the 16th, 18th (−3h), 19th, 22nd, 24th
+10. **Validator, negative:** a digest whose body cites `(F11)` with no `F11` index
+    line fails `check_import.py` naming `F11`; a state file with a 9-word topic name
+    fails naming the row; a new state file written with six columns fails; a new
+    digest slugged `…-topic` when `…-topic-2` exists draws a warning naming both;
+    the skill fixes and re-runs before presenting anything.
+11. **Legacy state file:** a six-column `course-state.md` written by v2.0/v2.1 →
+    read without complaint (Note cells ignored), and the delivered file has five
+    columns; every surviving cell of every pre-existing row is byte-identical.
+12. **Assess:** 21 topics, all `new` → batch rating completes in ≤ 2 user replies;
+    statuses seeded with `(self)` dates; a session-verified `ok` from earlier is not
+    downgraded without asking; volunteered commentary changes no file except, when
+    it names a recurring trap, the exam-brief watch-list.
+13. **Plan:** "exam on the 24th, I have the 16th, 18th (−3h), 19th, 22nd, 24th
     morning" → asks nothing already answered; prompts about missing exam-brief;
     invokes uni-assess on cold statuses; produces a Schedule section whose cells
     contain only IDs/hours/pointers; front-loads high-value topics; sprint tiers
-    named including accept-risk.
-11. **Tutor, UC1 (no plan):** after an import, "let's practice" → reads the full new
+    named including accept-risk; units marked `Examinable: no` are not scheduled.
+14. **Tutor, UC1 (no plan):** after an import, "let's practice" → reads the full new
     digest before the first question; agenda = new topics + 1–2 recap topics, the
     recap picks justified by the new digest's Connections lines; at the first block
     boundary the rules card is demonstrably re-read; session end updates only
-    covered topics and delivers the state file as a downloadable file.
-12. **Tutor, figures:** "show me that diagram from the slides" → the original page
+    covered topics' Status/Last cells and delivers the state file as a downloadable
+    file.
+15. **Tutor, figures:** "show me that diagram from the slides" → the original page
     is rasterized and presented; no textual re-description substitutes, no redrawn
     diagram.
-13. **Tutor, math:** formulas shown as `$$…$$` display math; no single-`$` inline
+16. **Tutor, math:** formulas shown as `$$…$$` display math; no single-`$` inline
     math, none in backticks; a digest symbol written `X_sub` is read and shown as a
     subscript, never as a product.
-14. **Check, mode A:** sheet in project + solution uploaded → pulls sheet and
+17. **Check, mode A:** sheet in project + solution uploaded → pulls sheet and
     relevant digest from the project unprompted; verdict-labeled per-task report;
     correct tasks get one line; unattempted tasks only listed, never solved.
-15. **Check, mode B:** "I'm completely stuck on task 3" → asks what they tried,
+18. **Check, mode B:** "I'm completely stuck on task 3" → asks what they tried,
     gives one course-anchored foothold, does not solve the task even under "just
     tell me" pushback without the genuine-stuck signals.
-16. **Contract, everywhere:** any skill updating a canonical file writes to
+19. **Contract, everywhere:** any skill updating a canonical file writes to
     `/mnt/user-data/outputs/` directly, presents it, reminds re-upload; a
-    hand-entered note in the state file survives every skill's touch verbatim
-    (the import-time pointer append is the one sanctioned exception, and it
-    appends — it never rewrites).
+    pre-existing topic row survives every skill's touch byte-identical except the
+    Status/Last cells a tutoring session legitimately updates.
 
 — end of specification —

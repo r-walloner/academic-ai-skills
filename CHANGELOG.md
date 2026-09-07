@@ -1,5 +1,86 @@
 # Changelog
 
+## v2.2.0 — 2026-09-07
+
+Second fix release from a field test: the same course re-imported from scratch with
+v2.1.0. The structural fixes held — figure references resolved, budgets kept,
+markers present, Connections written — so this release targets the semantic defects
+that remained. Packaging is unchanged (still one plugin, `uni`).
+
+### Findings → fixes
+
+**A course-specific formula was transcribed wrong, hedged "(schematic)".** Root
+cause, verified experimentally against the source deck: equation pages carry no
+images or vector figures, so triage never flagged them, and a PDF's text layer
+destroys typeset math — grouping parentheses vanish outright, so a function
+application and a subscripted product extract identically. Standard textbook
+formulas survived anyway (the model's prior fills the gaps), which means the damage
+concentrates precisely in the lecturer's own notation. Fixes:
+
+- `pdf_triage.py` gains a third signal, **math glyphs** (characters from the
+  Mathematical Alphanumeric Symbols unicode block), and lists the equation pages. On
+  the deck this was calibrated against it flagged every equation page and nothing
+  else. It marks where the fidelity rule applies; it is not an auto-rasterize flag.
+- **Formula fidelity rule** (SKILL.md step 3, digest template, `references/pdf-notes.md`):
+  simple standard-notation formulas may be read from the text layer; rasterize the
+  page first when layout is matrix/multi-line, when grouping is inferred rather than
+  seen, or when the notation is the course's own.
+- **Hedged formulas are now a validator error**, and the fix loop is the agent's own:
+  rasterize → re-transcribe → re-run, with nothing surfaced to the student. If a page
+  is illegible even rendered, the entry becomes a figure-index pointer rather than a
+  plausible guess.
+- Every transcribed formula carries its source page; a formula bullet without one
+  draws a warning.
+
+**Rhetorical teaching prompts were promoted to `(lecturer example)` exam angles**,
+one digest overshot the angle budget *because* marked bullets counted toward it, and
+a genuine gap disappeared from Open questions. Capture at first sight had only one
+class: every question mark on a slide qualified. Fixes:
+
+- **Two-class capture.** The scratch file now records `task:` (a question with a
+  determinable answer) and `rhetorical:` (a segue or thought-starter) entries. Only
+  tasks reach the digest, marked. Rhetorical prompts are ignored entirely — not exam
+  angles, not open questions, whether or not the material answers them.
+- The validator checks both directions: a missing or unmarked task is an error, and
+  so is a rhetorical prompt appearing anywhere in the digest.
+- **Marked bullets no longer count toward the 3–8 predicted angles**, and a digest
+  whose title block declares `**Examinable:** no` (organizational units — logistics,
+  overview sessions) is exempt from the floor and skipped by `uni-plan`/`uni-tutor`.
+
+**One catch-all open question absorbed most of the course's resolution signal** —
+an overview's roadmap logged as a gap, which later digests then "resolved" over and
+over. Fixes:
+
+- Open questions carry **per-digest IDs** (`Q1 · …`), one specific gap per bullet;
+  roadmap and agenda previews are explicitly not open questions.
+- `resolves` lines must cite one: `resolves digest-NN Qk: <answer in one clause>`.
+  With `--project`, the validator checks that the cited question actually exists in
+  the cited digest; `prior_digests.py` prints every question's ID (positional IDs for
+  digests written before this release, so they stay citable).
+
+**The state file's Note column drifted into per-topic content previews**, and the
+sanctioned resolved-pointer edit was applied to the wrong row in two formats. Fixes:
+
+- **The Note column is removed.** The topic table is five columns: ID, Unit, Topic,
+  Status, Last. Everything a note legitimately held has a better home — open
+  questions and resolution linkage in the digests, recurring traps in the
+  exam-brief watch-list, and the topic name is its own preview.
+- With the column goes the pointer exception: **at import, every pre-existing row is
+  byte-identical, no exceptions.** Older six-column files are read without complaint
+  and written back with five.
+
+**Two digests of a multi-part topic were slugged inconsistently** (one part
+numbered, the other not). Slugs must now be unique, every part of a multi-part topic
+is numbered, and the validator warns when a new slug differs from an existing one
+only by a numeric suffix.
+
+### Other changes
+
+- `check_import.py` takes `--project` for the cross-digest checks; note-length and
+  pointer checks are gone; table rows are read whether they have five columns or six.
+- Topic-name overflow no longer suggests moving the clarifier into a note — it gets
+  dropped, since the digest carries the detail.
+
 ## v2.1.0 — 2026-09-06
 
 Distribution change plus a fix release driven by a field test.
