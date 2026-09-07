@@ -48,7 +48,8 @@ re-upload. Merge, never clobber: the state file's own header carries the full ru
    confidence genuinely decays when a topic hasn't been seen for a while, and the
    student's current read is the point of this exercise. Topics the student skips
    stay untouched. If the student volunteers a reason ("T07 low, never got
-   recursion"), capture it as a ≤ 120-char note and keep moving — don't open a
+   recursion"), acknowledge it, let it inform the rating, and keep moving; a
+   recurring trap worth keeping goes to the exam-brief watch-list. Don't open a
    discussion; that's the tutor's job.
 
 4. **Deliver:** write the file, present it, remind re-upload. One line of
