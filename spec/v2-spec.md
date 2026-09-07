@@ -1,4 +1,13 @@
-# Academic AI Skills — v2.2.0 Plugin Specification
+# Academic AI Skills — v2.3.0 Plugin Specification
+
+**Relationship to v2.2.0:** no new mechanism, no format change — v2.3.0 retunes rules
+that v2.2.0 introduced and that the third field test showed overshooting or falling
+short. Formula fidelity extends from *reading* the page to *transcribing* it; the
+task/rhetorical test becomes structural (does the deck answer it?) instead of textual;
+the open-question criterion loosens from "a slide says covered later" to "the material
+uses or names what it doesn't supply"; the display-math escape hatch becomes mandatory
+for the cases unicode can't carry; slugs come from the material's own title; a digest
+may condense but never supplement. §5.3 maps each finding to its fix.
 
 **Relationship to v2.1.0:** one deliberate format change, otherwise additive. The topic
 table **loses its Note column** (five columns now: ID, Unit, Topic, Status, Last); the
@@ -10,7 +19,7 @@ are now byte-identical at import, **no exceptions**, and resolution linkage live
 in the digests' Connections sections. What else changes: formula transcription gains a
 fidelity rule and an unattended self-fix loop; lecturer-example capture becomes
 two-class (posed tasks in, rhetorical prompts ignored); open questions get per-digest
-IDs so resolutions are 1:1 and checkable; digests gain an `Examinable:` line; the
+IDs so resolutions are 1:1 and checkable; the
 triage script learns to spot equation pages; the validator learns all of it. §5.2 maps
 each finding to its fix.
 
@@ -311,14 +320,13 @@ style, but never writes.
 ### 4.3 Digest files — `digest-<NN>-<slug>.md`
 
 One per imported unit of lecture material. Format carries over from v1's template
-with three additions. Sections:
+with three additions. Everything in it comes from the material: a digest may
+condense, never supplement. Background the model knows and the deck doesn't state —
+the physical cause of an effect, a standard qualifier on a definition — is either
+left out or visibly marked as outside the material, because the tutor otherwise
+drills it as something the lecturer said. Sections:
 
-1. **Title & source** — unit title, source filename, page range, import date, and,
-   only when it applies, an `**Examinable:** no ([reason])` line — set when the
-   material itself says the unit isn't exam-relevant (course logistics, an overview
-   lecture, a guest talk). The line is machine-read: it waives the exam-angle floor
-   (5) and tells `uni-plan` and `uni-tutor` to deprioritize the unit. Examinable
-   units carry no line at all; the field is not written as `yes`.
+1. **Title & source** — unit title, source filename, page range, import date.
 2. **Core concepts** — key terms, 1–3 sentence definitions, lecturer's own wording.
 3. **Key relationships / processes** — how concepts connect; diagrams *described* in
    words with a pointer to the figure index entry.
@@ -327,8 +335,8 @@ with three additions. Sections:
    to the exact slides. **Worked numeric examples are not transcribed** (v2's rule:
    show the original, don't redraw it) — they get a figure-index line whose
    description names what the numbers *are*, and, when the example is the kind an exam asks
-   the student to read, an exam angle that names that task (see 5). Three fidelity
-   rules *(new in v2.2)*:
+   the student to read, an exam angle that names that task (see 5). Four fidelity
+   rules:
    - **Read at the resolution the formula needs.** The text layer is fine for a
      simple formula in standard notation whose structure survives extraction (a
      linear chain, a textbook identity). Rasterize and read the page before writing
@@ -338,31 +346,52 @@ with three additions. Sections:
      every formula would be waste; rasterizing the ones you'd otherwise guess at is
      the point. The triage report's math-page markers (§7.2 step 2) say where the
      equations are.
+   - **Transcribe what is drawn, not what it ought to be.** Reading the page removes
+     the extraction ambiguity; it does not remove the pull toward the familiar form,
+     and the v2.2 field test showed a rasterized equation still normalized into the
+     shape the model expected. So, at the moment of writing: a token inside an
+     equation that isn't a standard symbol name is an **opaque operator** — keep it
+     and its bracketing exactly as drawn, never fold it into a product or a
+     subscript. An expression that deviates from the standard form is transcribed as
+     drawn (the lecturer's version is what the exam uses); where the deviation looks
+     like a slip, say so in the same bullet rather than silently correcting it. The
+     same discipline covers the sentence a formula sits in: connectives are
+     transcribed, not paraphrased — turning the slide's "but this needs X" into
+     "because X" invents a causal claim the lecturer never made, and prose defects
+     are invisible to every mechanical check.
    - **No hedged formulas, ever.** "Schematic", "approximate", "roughly",
      "presumably" next to a formula is the system saying it hasn't read the source —
      the fix is to go read it (rasterize, transcribe, drop the hedge), not to ship
      the guess with a warning label. The validator refuses a digest with a hedged
-     formula, and the fix loop is unattended (P9): rasterize → rewrite → re-run. If
-     the page is genuinely illegible even rendered, the formula is not transcribed at
-     all — the entry becomes a pointer to its figure-index line, which is an honest
-     "look at the original" instead of a plausible fabrication.
+     formula, and the fix loop is unattended (P9): rasterize → rewrite → re-run.
+     **Deleting the hedge word is never the fix**: an unhedged wrong formula is worse
+     than a hedged one, because it claims a verification that didn't happen. If
+     uncertainty survives reading the rendered page, the formula is not transcribed
+     at all — the entry becomes a pointer to its figure-index line, which is an
+     honest "look at the original" instead of a plausible fabrication.
    - **Every formula names its page.** Each transcribed formula ends with `(p.N)` or
-     an `F#` reference. This is what makes spot-checking possible at all.
+     an `F#` reference. This is what makes spot-checking possible at all. A page
+     citation certifies *where* the formula came from, not that it is correct —
+     which is exactly why the transcription rule above carries the weight.
 5. **Likely exam angles** — 3–8 bullets predicting question *types*; lecturer-provided
    example questions captured **verbatim** and marked `(lecturer example)`.
    Three rules with teeth:
-   - **Only posed tasks are lecturer examples** *(sharpened in v2.2)*. A lecturer
-     example is a question with a determinable answer the student could be asked to
-     produce — an exercise, a "typical exam question", a "you should be able to…".
-     A **rhetorical teaching prompt** — a question used as a segue or to spark
-     thought ("But how would this transform?", "Try to imagine extending this to
-     the general case…", "Why is it called X?") — is pedagogy, not exam signal, and is
-     **ignored entirely**: not an exam angle, and not an open question either,
-     whether or not the slides answer it (open questions are for genuine gaps, see
-     6). The classification happens at first sight in the scratch file (§7.2 step
-     4), which records both classes so the validator can check that no rhetorical
-     prompt leaked into the digest. v2.1 captured every question mark on a slide;
-     the cost was rhetorical prompts wearing the strongest-signal marker.
+   - **Only posed tasks are lecturer examples**, and the test is *structural*
+     *(retuned in v2.3)*. Ask what the deck does with the question, not how it is
+     phrased: if the material answers it on the same or the next page, it is a
+     **rhetorical teaching prompt** — a segue the lecturer answers themselves — and
+     is **ignored entirely** (not an exam angle, not an open question). If it is
+     left to the student to answer, or labelled as an exercise or a "typical exam
+     question", it is a **posed task** and belongs here, verbatim and marked. When
+     the two readings are genuinely balanced, capture it as a task: a
+     mis-marked question costs the student one over-drilled angle, a discarded one
+     costs the strongest signal in the material. The earlier wording tested whether
+     the question had a determinable answer, which nearly every teaching question
+     does — the v2.2 field test classified *every* lecturer question in a
+     13-unit course as rhetorical and shipped zero markers, having previously
+     marked all of them. The classification happens at first sight in the scratch
+     file (§7.2 step 4), which records both classes so the validator can check
+     that no rhetorical prompt leaked into the digest.
    - **Provenance survives the merge.** Every posed task is written down the moment
      it is seen, folded into this section verbatim with its marker, and the
      validator checks that each one arrived. The marker is the only thing that lets
@@ -375,8 +404,13 @@ with three additions. Sections:
      student will be asked to read it. The 3–8 range is a shape, not a cap to cut to.
 6. **Open questions** — genuine gaps only, **one specific gap per bullet, each with
    a per-digest ID**: `Q1 · [the question]`. A genuine gap is something the material
-   itself leaves hanging: a point flagged "covered later", a derivation referenced
-   but not shown, an unclear or seemingly contradictory statement. Two exclusions
+   **uses or names without supplying** — a step referenced but not derived, a term
+   used before it is defined, a condition asserted without its justification, an
+   unclear or seemingly contradictory statement. An explicit "covered later" is one
+   such case, not the definition: decks rarely announce their gaps, and v2.2 tested
+   for the announcement and found almost none, collapsing a dense resolution web to
+   a single link across a whole course. A unit that is visibly "part 1" of a topic
+   is exactly where these gaps live. Two exclusions
    with v2.1 field evidence behind them: **rhetorical teaching prompts** never land
    here (see 5 — they're ignored outright), and **roadmap/agenda previews are not
    open questions**. An overview lecture "teases" every later topic by design;
@@ -404,7 +438,9 @@ with three additions. Sections:
    of describing or (worse) regenerating it. **IDs come from one running counter
    during reading and are never renumbered at merge** (§7.2 step 4); every inline
    `F#` in the body must resolve to an index line, and the validator refuses a digest
-   where one doesn't.
+   where one doesn't. IDs are per-digest, so a figure in *another* digest is cited by
+   naming it (`digest-00 F17`) — a bare `F17` always means this digest's F17, and the
+   validator reads both forms that way.
 9. **Topics registered** — one line: `Topics: T07–T10 (see course-state.md)`.
    Cross-link for traceability; the state file remains the registry of record.
 
@@ -478,10 +514,29 @@ their root causes were verified experimentally against the source deck:
 | Finding | Root cause | Fix | Where |
 |---|---|---|---|
 | a course-specific formula wrong in a third different way, hedged "(schematic)" | equation pages carry no images/vector figures, so triage never flagged them; the text layer destroys grouping (the parens of `rect(…)` vanish outright — verified against the deck), and the run transcribed glyph soup; standard formulas survived via model prior, so the damage concentrates in the lecturer's own notation | Fidelity rule (raster when grouping/notation is in doubt); math-glyph triage signal (verified: flags exactly the equation pages, zero false positives); hedge words = validator error with an unattended rasterize-and-rewrite fix loop; every formula names its page | §4.3 (4), §7.2 steps 2, 4, 8 |
-| rhetorical teaching prompts promoted to `(lecturer example)` exam angles; one digest at 10 angle bullets *because of* the marker fix, another at 2; a genuine slide-poses-but-never-answers gap vanished from Open questions | capture-at-first-sight had one class — every question mark on a slide qualified — and marked bullets counted against the 3–8 range | two-class capture (posed task vs. rhetorical prompt); rhetorical prompts ignored entirely; marked bullets excluded from the 3–8 count; `Examinable: no` waives the floor; validator checks the scratch classes both directions | §4.3 (1, 5), §7.2 steps 4, 8 |
+| rhetorical teaching prompts promoted to `(lecturer example)` exam angles; one digest at 10 angle bullets *because of* the marker fix, another at 2; a genuine slide-poses-but-never-answers gap vanished from Open questions | capture-at-first-sight had one class — every question mark on a slide qualified — and marked bullets counted against the 3–8 range | two-class capture (posed task vs. rhetorical prompt); rhetorical prompts ignored entirely; marked bullets excluded from the 3–8 count; validator checks the scratch classes both directions | §4.3 (1, 5), §7.2 steps 4, 8 |
 | one catch-all "everything is only teased here" open question that 8 of 13 later digests claim to resolve | an overview's roadmap logged as a gap; resolutions had no unit to bind to | roadmap previews banned from Open questions; per-digest Q-IDs; resolves lines cite one Q; validator verifies the citation against the cited digest | §4.3 (6, 7), §7.2 steps 3, 8 |
 | Note cells used as per-topic content previews; the resolved-pointer edit applied to the *new* row pointing backwards, in two formats | a free-text cell in a state file grows content (v1's disease, lower dose); the pointer rule left "which row" implicit | Note column removed; existing rows byte-identical at import with no exceptions; resolution linkage lives only in digest Connections | §4.1, §7.2 step 7 |
 | `digest-05-geometric-algorithms` next to `digest-06-geometric-algorithms-2` | slug pattern-matching had no check | slugs unique; every part of a multi-part topic numbered; validator warns on numeric-suffix-only collisions | §4.3 naming, §7.2 step 8 |
+
+### 5.3 v2.2.0 field findings → v2.3.0 fixes
+
+Third import of the same course. Structure held (five-column state, complete formula
+provenance, no dangling figures, roadmap previews correctly demoted to forward
+links); the failures are at the two ends the mechanical rules don't reach —
+transcription and criteria that were tuned too tight. No new mechanism was added;
+each fix retunes an existing one.
+
+| Finding | Root cause | Fix | Where |
+|---|---|---|---|
+| the same course-specific formula wrong a fourth time — rasterized, page-cited, and still normalized into the familiar product form; the hedge that had flagged it was gone | the fidelity rule addressed *how the page is read*, not *how an ambiguous read is resolved*; on the same deck a standard formula was repaired by the model's prior and the lecturer's own notation was destroyed by it | fidelity rule extended to transcription: unknown token = opaque operator, keep bracketing as drawn; transcribe deviations from the standard form rather than correcting them; deleting a hedge word is never the fix | §4.3 (4) |
+| the sentence beside that formula flipped the deck's "but this needs X" into "because X", inventing a causal claim, and an exam angle inherited it | fidelity was scoped to formulas; the prose around them was paraphrased freely | connectives on a formula slide are transcribed, not paraphrased | §4.3 (4) |
+| every lecturer question in the course classified rhetorical — zero markers, after v2.1 marked all of them | "has a determinable answer" is true of nearly every teaching question, so the text-level test decides nothing | structural test: does the deck answer it there? answered → rhetorical, left to the student → task; ties resolve to task | §4.3 (5) |
+| open questions collapsed to one resolution link course-wide; a "part 1" unit declared itself self-contained while its part 2 supplied three missing pieces | the criterion had narrowed to "a slide says *covered later*", which decks almost never do | a gap is what the material uses or names without supplying; the explicit deferral is one instance, not the definition | §4.3 (6) |
+| LaTeX fragments (`J^T_{k−1}`, `min_{K,R,t}`) throughout, no display math anywhere | the `$$` escape hatch existed but nothing said when it was required | mandatory for index bounds, braced subscripts, transposes on subscripted symbols; validator warns on braced sub/superscripts outside `$$` | §6.3, §7.2 step 8 |
+| a legitimate cross-digest figure reference read as a dangling `F#` | figure IDs are per-digest and the citation form was undefined | `digest-NN F#` for another digest's figure; bare `F#` means this digest | §4.3 (8) |
+| part 1 renamed to dodge the slug collision, leaving `-2` with no `-1` and a slug that no longer matched the lecture | the rule said "unique", the material's own title wasn't anchored | slug comes from the material's own title; number every part | §4.3 naming |
+| two model-supplied facts presented as deck content | nothing said the digest may not supplement | a digest condenses, never supplements; unsourced background is left out or marked | §4.3 |
 
 ---
 
@@ -530,7 +585,13 @@ project instructions block. The full texts below are normative.
 > freely — the rendering rule is about what the *student is shown in chat* — with
 > one convention: underscore is subscript, middle dot is multiplication, and a
 > subscript is never expanded into a product. If unicode can't say it unambiguously,
-> use `$$…$$` in the file as well.
+> use `$$…$$` in the file as well; that escape hatch is **mandatory**, not optional,
+> for sums or products with index bounds, stacked or multi-character braced
+> subscripts, and transposes carried on a subscripted symbol. LaTeX fragments in
+> plain text (`J^T_{k−1}`, `min_{K,R,t}`) are the failure this prevents: they are a
+> third syntax that is neither unicode nor renderable LaTeX, and markdown italicizes
+> the span between the underscores, mangling the formula exactly where a student
+> reads it. The validator warns on braced sub/superscripts outside `$$`.
 
 ### 6.4 Original figures over descriptions
 
@@ -660,12 +721,13 @@ lecturer-posed example questions into the digest, and noticing stray exam-info s
    - **Lecturer questions — captured at first sight, in two classes.** When the
      lecturer poses a question, append it verbatim (with its page) to
      `/home/claude/<unit>/lecturer-examples.md` right then, prefixed with its class:
-     `task:` for a posed task with a determinable answer (an exercise, a "typical
-     exam question", a "you should be able to…"), `rhetorical:` for a segue or
-     thought-starter ("But how does…?", "Try to imagine…", "Why is it called…?").
-     Only `task:` entries reach the digest (§4.3 (5)); `rhetorical:` entries are
-     recorded *so the validator can prove they went nowhere* — they are not exam
-     angles and not open questions. Exam logistics/format slides in a lecture deck:
+     `rhetorical:` when the deck answers the question itself on that page or the
+     next (a segue), `task:` when it is left to the student or labelled an exercise
+     or exam question. Judge what the deck *does* with it, not how it is phrased,
+     and when the two readings are balanced write `task:`. Only `task:` entries
+     reach the digest (§4.3 (5)); `rhetorical:` entries are recorded *so the
+     validator can prove they went nowhere* — they are not exam angles and not open
+     questions. Exam logistics/format slides in a lecture deck:
      note the pages for the reference (routing rule above); don't digest them as
      course content.
 5. **Unit & scale detection:** infer the course's structural unit from the material
@@ -707,10 +769,11 @@ lecturer-posed example questions into the digest, and noticing stray exam-info s
    words; duplicate or non-sequential topic IDs;
    *Warnings* (judgment, say what you decided): rows this import outside the
    computed target; table past 50; predicted exam angles (marked bullets excluded)
-   outside 3–8 unless `Examinable: no`; a formula bullet without a `(p.N)` or `F#`
-   reference; an open-question bullet that reads like a list (multiple gaps in one
-   Q); empty Connections when prior digests exist; a slug that differs from an
-   existing digest's slug only by a numeric suffix. The script names the offending
+   outside 3–8; a formula bullet without a `(p.N)` or `F#`
+   reference; a braced sub/superscript (`_{…}`, `^{…}`) outside `$$` display math; an
+   open-question bullet that reads like a list (multiple gaps in one Q); empty
+   Connections when prior digests exist; a slug that differs from an existing
+   digest's slug only by a numeric suffix. The script names the offending
    ID or text in every message. Re-run until clean; only then deliver.
 9. **Deliver:** write digest + updated state file to outputs, present both, remind
    re-upload (and to keep the raw file in the project — figure retrieval depends on
@@ -729,13 +792,16 @@ the state file) before delivery.
 **Bundled files:** `scripts/pdf_triage.py` (v2.2: + math-glyph signal);
 `scripts/prior_digests.py` (v2.2: prints Q-IDs with each open question);
 `scripts/check_import.py` (v2.2: + `--project`, hedge/Q-ID/class/slug/five-column
-checks, pointer checks removed); `assets/digest-template.md` (v2.2: Examinable line,
-fidelity rules, two-class capture, Q-IDs); `assets/exam-brief-template.md`;
+checks, pointer checks removed); `assets/digest-template.md` (v2.2: fidelity
+rules, two-class capture, Q-IDs; v2.3: transcription rule, structural question test,
+loosened gap criterion, mandatory display math); `assets/exam-brief-template.md`;
 `references/topics.md` (v2.2: no note guidance, absolute row immutability);
 `references/pdf-notes.md` (v2.2: math-marker guidance); `references/exam-material.md`
 — Route B in full. Scripts are run, not read.
 
-**Budget:** SKILL.md ≤ 160 lines with Route B out and the validation loop in; the
+**Budget:** SKILL.md ≤ 190 lines with Route B out and the validation loop in (the
+capture disciplines of step 4 are the bulk and have to be in the prompt, since they
+apply while reading, before any template is opened); the
 references carry the depth. (v2.0.0 shipped at 156 lines against a 140 budget with
 both routes inline — moving Route B out pays for the new steps.)
 
@@ -1114,9 +1180,9 @@ counts) are structural, not domain-specific.
    single-line formula in standard notation is transcribed from the text layer with
    no raster. The triage table marks the equation pages.
 7. **Import, overview unit:** a first-lecture overview that names all later topics
-   and declares itself organizational → the digest carries `Examinable: no`; the
-   roadmap appears (at most) as Connections *feeds into* lines, **not** as an open
-   question; the exam-angle floor is waived without a validator warning.
+   → the roadmap appears (at most) as Connections *feeds into* lines, **not** as an
+   open question; an angle count below the floor is a warning the run answers in one
+   line, not a defect to pad around.
 8. **Import, lecture material with exam pages:** a last-unit deck whose final pages
    describe the exam format → digest produced via Route A; the skill opens
    `references/exam-material.md` in the same run, creates/merges `exam-brief.md`
@@ -1141,7 +1207,7 @@ counts) are structural, not domain-specific.
     morning" → asks nothing already answered; prompts about missing exam-brief;
     invokes uni-assess on cold statuses; produces a Schedule section whose cells
     contain only IDs/hours/pointers; front-loads high-value topics; sprint tiers
-    named including accept-risk; units marked `Examinable: no` are not scheduled.
+    named including accept-risk.
 14. **Tutor, UC1 (no plan):** after an import, "let's practice" → reads the full new
     digest before the first question; agenda = new topics + 1–2 recap topics, the
     recap picks justified by the new digest's Connections lines; at the first block

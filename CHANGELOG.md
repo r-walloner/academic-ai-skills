@@ -1,5 +1,75 @@
 # Changelog
 
+## v2.3.0 — 2026-09-07
+
+Third field test, same course. Structure held everywhere the validator can see it —
+five-column state file, every formula page-cited, no dangling figure references,
+roadmap previews correctly demoted to forward links. The remaining defects sit at the
+two ends mechanical rules don't reach: what happens when an ambiguous page is turned
+into text, and criteria that were tuned so tight they stopped firing. **No new
+mechanism in this release** — every fix retunes one that already exists.
+
+### The formula that started all of this, fixed at the right stage
+
+The course-specific formula came out wrong a fourth time, now rasterized and
+page-cited. The source deck settled why: the page *was* flagged, the fidelity rule
+*did* apply, and the model still resolved an unfamiliar token into the matrix-algebra
+shape it expected. The same deck contains the control case — a standard formula whose
+grouping the text layer destroyed just as badly, and which the model's prior repaired
+correctly. Detection was never the problem.
+
+- **The fidelity rule now covers transcription, not just reading.** A token inside an
+  equation that isn't a standard symbol name is an *opaque operator*: its brackets are
+  kept exactly as drawn, and it is never folded into a product or a subscript. An
+  expression that deviates from the standard form is transcribed as drawn — the
+  lecturer's version is what the exam uses — with the deviation noted rather than
+  silently corrected.
+- **Fidelity extends to the sentence around the formula.** The same slide's "but this
+  needs X" became "because X" in the digest, inventing a causal claim, and an exam
+  angle inherited it. Connectives on a formula slide are transcribed, not paraphrased.
+  This defect is invisible to every mechanical check, which is why it needed a rule.
+- **Deleting a hedge word is explicitly not a fix.** Making hedges an error in v2.2
+  removed the warning label and kept the wrong formula. The validator now says so in
+  the error itself: rasterize and re-transcribe, or replace the entry with its
+  figure-index pointer.
+
+### Retuned criteria
+
+- **The task/rhetorical test is structural.** "Has a determinable answer" is true of
+  nearly every teaching question, so v2.2 classified *every* lecturer question in a
+  13-unit course as rhetorical and shipped zero markers — the third swing on this axis
+  after v2.0 (none) and v2.1 (all). The test is now what the deck *does* with the
+  question: answered on that page or the next → rhetorical; left to the student, or
+  labelled an exercise or exam question → task. A balanced call goes to task.
+- **The open-question criterion is loosened.** v2.2 asked for an explicit "covered
+  later", which decks almost never say; the course-wide resolution web collapsed to a
+  single link, and a "part 1" unit declared itself self-contained while its part 2
+  supplied three pieces it had used without deriving. A gap is now anything the
+  material uses or names without supplying — the explicit deferral is one instance of
+  that, not the definition. Roadmap previews are still never open questions.
+- **The display-math escape hatch is mandatory** for sums or products with index
+  bounds, braced or stacked subscripts, and transposes on a subscripted symbol. The
+  corpus had zero `$$` blocks and LaTeX fragments throughout; markdown italicizes the
+  span between two underscores, mangling formulas exactly where a student reads them.
+  The validator warns on braced sub/superscripts outside `$$`.
+- **Slugs come from the material's own title.** The v2.2 collision was resolved by
+  renaming part 1 to an unrelated phrase, leaving a "-2" with no "-1" and a filename
+  the student couldn't match to the lecture.
+- **A digest condenses, never supplements.** Two model-supplied facts were presented
+  as deck content. Background the material doesn't state is left out or marked.
+
+### Other changes
+
+- **Cross-digest figure references no longer read as dangling.** Figure IDs are
+  per-digest; another digest's figure is cited as `digest-00 F17`, and the validator
+  recognizes that form instead of erroring on a missing local F17.
+- **The `Examinable:` title-block line is removed** along with its floor waiver and
+  the `uni-plan`/`uni-tutor` deprioritization. It was introduced in v2.2 and no digest
+  in the field test used it.
+- `uni-import`'s SKILL.md budget is raised to 190 lines to match what the capture
+  disciplines actually cost; they have to live in the prompt because they apply while
+  reading, before any template is opened.
+
 ## v2.2.0 — 2026-09-07
 
 Second fix release from a field test: the same course re-imported from scratch with

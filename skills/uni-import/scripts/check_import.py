@@ -367,6 +367,9 @@ def check_digest(text, state_rows, prev_text, scratch_dir, ignore_figs, project_
         body_wo_index = body_all.replace(fig_sec[2], "")
     cited = {}
     for i, line in enumerate(body_wo_index.splitlines(), 1):
+        # Figure IDs are per-digest, so "digest-00 F17" (or "F17 in digest-00") cites
+        # another digest's figure and must not be read as this digest's F17.
+        line = re.sub(r"digest-\d+[^.\n]{0,20}?\bF\d+|\bF\d+\s+(?:in|of|from)\s+digest-\d+", " ", line)
         for a, b in re.findall(r"\bF(\d+)\s*[–—-]\s*F?(\d+)\b", line):
             for n in range(int(a), int(b) + 1):
                 cited.setdefault(n, i)
@@ -382,19 +385,26 @@ def check_digest(text, state_rows, prev_text, scratch_dir, ignore_figs, project_
 
     # --- formulas: hedges, page refs, and the subscript-as-product heuristic ---
     form = section(secs, "formulas")
-    non_examinable = bool(re.search(r"^\*\*Examinable:\*\*\s*no", text, re.M | re.I))
-    if non_examinable:
-        info("digest: title block says Examinable: no — exam-angle floor waived")
     if form:
         for b in bullets(form[2]):
             low = b.lower()
             hit = next((h for h in HEDGE_WORDS if h in low), None)
             if hit:
                 err(f"digest: hedged formula (\"{hit}\") — a hedge means the source page wasn't read. "
-                    f"Rasterize the page, transcribe what the image shows, and drop the hedge "
-                    f"(or replace the entry with its figure-index pointer if genuinely illegible): \"{b[:90]}\"")
+                    f"Rasterize the page and transcribe what the image shows; deleting the hedge word "
+                    f"is NOT the fix (an unhedged wrong formula claims a verification that never "
+                    f"happened). Still unsure after looking? Replace the entry with its figure-index "
+                    f"pointer: \"{b[:90]}\"")
             if re.search(r"[=←→≈]", b) and not (has_page(b) or re.search(r"\bF\d+\b", b)):
                 warn(f"digest: formula bullet has no (p.N) or F# source reference: \"{b[:80]}\"")
+            # LaTeX fragments in plain text are neither unicode nor renderable math, and
+            # markdown italicizes the span between two underscores — use $$…$$ instead.
+            outside = re.sub(r"\$\$.*?\$\$", " ", b, flags=re.S)
+            brace = re.search(r"[_^]\{[^}]*\}", outside)
+            if brace:
+                warn(f"digest: braced sub/superscript \"{brace.group(0)}\" outside display math — unicode "
+                     f"can't carry it, so put the whole formula in $$…$$ (required for index bounds, "
+                     f"stacked subscripts, transposes on a subscripted symbol): \"{b[:70]}\"")
         for i, line in enumerate(form[2].splitlines(), form[3] + 1):
             for tok in re.findall(r"[A-Za-z0-9⁻¹²³)\]]·([a-z]{2,6})·", line):
                 if tok not in KNOWN_FUNCTIONS:
@@ -413,10 +423,10 @@ def check_digest(text, state_rows, prev_text, scratch_dir, ignore_figs, project_
         if predicted > hi:
             warn(f"digest: {predicted} predicted exam angles (excluding {len(marked)} lecturer examples), "
                  f"expected {lo}–{hi} — condense the predictions, never the captured examples")
-        elif predicted < lo and not non_examinable:
+        elif predicted < lo:
             warn(f"digest: only {predicted} predicted exam angle(s) (excluding {len(marked)} lecturer examples), "
                  f"expected {lo}–{hi} — remember condensation never deletes an angle whose data moved "
-                 f"to the figure index (an organizational unit can declare 'Examinable: no' instead)")
+                 f"to the figure index")
         info(f"digest: {predicted} predicted angle(s) + {len(marked)} lecturer example(s) in §Likely exam angles")
     all_blocks = bullets(body_all)
     if scratch_dir:
