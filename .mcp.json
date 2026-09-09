@@ -1,0 +1,14 @@
+{
+  "project_sync": {
+    "command": "python",
+    "args": [
+      "${CLAUDE_PLUGIN_ROOT}/servers/project_sync.py"
+    ],
+    "env": {
+      "CLAUDE_PROJECT_SYNC_SESSION_KEY": "${CLAUDE_PROJECT_SYNC_SESSION_KEY}",
+      "CLAUDE_PROJECT_SYNC_PROJECT_ID": "${CLAUDE_PROJECT_SYNC_PROJECT_ID}",
+      "CLAUDE_PROJECT_SYNC_ORGANIZATION_ID": "${CLAUDE_PROJECT_SYNC_ORGANIZATION_ID}",
+      "CLAUDE_PROJECT_SYNC_BASE_URL": "${CLAUDE_PROJECT_SYNC_BASE_URL}"
+    }
+  }
+}

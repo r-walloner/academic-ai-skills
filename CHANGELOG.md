@@ -1,5 +1,33 @@
 # Changelog
 
+## v2.3.0 — 2026-09-09
+
+Experimental automation release for the "re-upload updated files" problem. The normal
+download/re-upload loop remains the supported baseline; this release adds an opt-in
+best-effort sync layer for users willing to accept an unsupported Claude web API.
+
+### What changed
+
+- **Bundled experimental MCP server:** `.mcp.json` now ships a local `project_sync`
+  server that can talk to the claude.ai Project-docs web endpoints when the runtime
+  provides `CLAUDE_PROJECT_SYNC_SESSION_KEY` and `CLAUDE_PROJECT_SYNC_PROJECT_ID`
+  (plus optional `CLAUDE_PROJECT_SYNC_ORGANIZATION_ID`).
+- **Narrow write surface by design:** the server only accepts the framework's canonical
+  files — `course-state.md`, `exam-brief.md`, and `digest-*.md` — and is built around
+  replace-by-filename semantics rather than general Project management.
+- **Skill integration:** `uni-import`, `uni-assess`, `uni-plan`, and `uni-tutor` may now
+  call the bundled sync tool *after* writing files to `/mnt/user-data/outputs/`. On any
+  failure, they keep the existing downloadable output and re-upload reminder.
+- **Setup/instructions updates:** `uni-setup` and the generated project instructions now
+  mention the experimental connector and make the fallback explicit.
+
+### Status
+
+- **Highly experimental**
+- **Untested against live Claude Projects from this repository**
+- Depends on an **undocumented** claude.ai web interface
+- Requires a user-provided **session credential** rather than a normal public API key
+
 ## v2.2.0 — 2026-09-07
 
 Second fix release from a field test: the same course re-imported from scratch with

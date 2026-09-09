@@ -20,7 +20,10 @@ extra exchange erodes that value — aim for two user replies total.
 
 **Contract:** project/upload mounts are read-only — write the updated file directly
 to `/mnt/user-data/outputs/course-state.md`, present it, remind the student to
-re-upload. Merge, never clobber: the state file's own header carries the full rules.
+re-upload. If the plugin's experimental `mcp__plugin_uni_project_sync__replace_doc`
+tool is available, you may call it **after** writing the file to try syncing
+`course-state.md` back into the Claude Project; on failure, keep the normal fallback.
+Merge, never clobber: the state file's own header carries the full rules.
 
 ## Flow
 
@@ -52,6 +55,8 @@ re-upload. Merge, never clobber: the state file's own header carries the full ru
    recurring trap worth keeping goes to the exam-brief watch-list. Don't open a
    discussion; that's the tutor's job.
 
-4. **Deliver:** write the file, present it, remind re-upload. One line of
-   orientation and stop: "8 weak, 9 ok, 4 strong — uni-plan or uni-tutor can start
-   from this."
+4. **Deliver:** write the file, present it, remind re-upload. If the experimental
+   `mcp__plugin_uni_project_sync__replace_doc` tool is available, you may call it
+   for `/mnt/user-data/outputs/course-state.md`; if it fails, say so briefly and
+   keep the normal fallback. One line of orientation and stop: "8 weak, 9 ok, 4
+   strong — uni-plan or uni-tutor can start from this."

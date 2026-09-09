@@ -1,4 +1,9 @@
-# Academic AI Skills — v2.2.0 Plugin Specification
+# Academic AI Skills — v2.3.0 Plugin Specification
+
+**Relationship to v2.2.0:** additive only. v2.3.0 ships an experimental bundled
+`project_sync` MCP server and updates the skill contract so writing skills may try to
+sync canonical files back into the Claude Project through the unsupported claude.ai web
+API, while preserving the existing downloadable-output fallback.
 
 **Relationship to v2.1.0:** one deliberate format change, otherwise additive. The topic
 table **loses its Note column** (five columns now: ID, Unit, Topic, Status, Last); the

@@ -126,6 +126,17 @@ This route is intentionally flagged as **high-risk and untested**: it depends on
 undocumented interface, requires the student to supply a session credential, and may
 break without notice if Claude's web app changes.
 
+The plugin now ships an **experimental** local MCP server named `project_sync`. It is
+opt-in and disabled until the environment provides:
+
+- `CLAUDE_PROJECT_SYNC_SESSION_KEY`
+- `CLAUDE_PROJECT_SYNC_PROJECT_ID`
+- optionally `CLAUDE_PROJECT_SYNC_ORGANIZATION_ID`
+
+When those are present, the writing skills may try to sync `course-state.md`,
+`exam-brief.md`, or `digest-*.md` back into the Project automatically **after**
+writing the normal downloadable output file.
+
 ## Model & effort recommendations
 
 Match the model to the step — spend reasoning where it pays:
