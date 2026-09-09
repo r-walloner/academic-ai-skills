@@ -12,7 +12,7 @@ BASE_URL = os.environ.get("CLAUDE_PROJECT_SYNC_BASE_URL", "https://claude.ai/api
 SESSION_KEY = os.environ.get("CLAUDE_PROJECT_SYNC_SESSION_KEY", "")
 PROJECT_ID = os.environ.get("CLAUDE_PROJECT_SYNC_PROJECT_ID", "")
 ORGANIZATION_ID = os.environ.get("CLAUDE_PROJECT_SYNC_ORGANIZATION_ID", "")
-ALLOWED_OUTPUT_ROOT = "/mnt/user-data/outputs"
+ALLOWED_OUTPUT_ROOT = os.environ.get("CLAUDE_PROJECT_SYNC_OUTPUT_ROOT", "/mnt/user-data/outputs")
 CANONICAL_FILE_RE = re.compile(r"^(course-state\.md|exam-brief\.md|digest-[a-zA-Z0-9-]+\.md)$")
 USER_AGENT = "academic-ai-skills-project-sync/0.1"
 
