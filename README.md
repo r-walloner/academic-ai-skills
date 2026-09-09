@@ -104,20 +104,27 @@ silently starting fresh.
 
 Issue #4 looked at two ways to remove the manual re-upload step entirely:
 
-1. **Claude Project files API + plugin-bundled MCP server.** This would be the clean
-   solution: let a skill write `course-state.md` / `exam-brief.md` back into the
-   Project directly through an API. At the moment, this is **not available**: Claude's
-   public API surface exposes file uploads for API workloads, but not Claude Project
-   knowledge files.
+1. **Claude Project files API + plugin-bundled MCP server.** There is still no known
+   **public, documented** Project-files API. But there does appear to be an
+   **unofficial web API** used by the Claude web app itself, and third-party tools have
+   shown that Project docs can be listed, uploaded, and deleted through it.
 2. **GitHub sync + a GitHub MCP server.** This is **partly possible** today: a skill
    could commit updated course files into a GitHub repo that is connected to the
    Project. The blocker is that Claude's Project GitHub connector currently syncs
    **on demand**, so the student would still need to click **Sync now** before the
    next session sees the change.
 
-So v2 keeps the explicit download/re-upload loop for now. If Claude adds direct
-Project-file APIs, that becomes the obvious path; until then, a GitHub-backed workflow
-is only a partial convenience trade-off, not true end-to-end automation.
+That makes the experimental recommendation:
+
+- **Best supported path:** keep the current download/re-upload loop.
+- **Best automation path:** try an **experimental** bundled MCP server that talks to
+  Claude's unofficial Project-docs web endpoints via a user-provided `sessionKey`.
+- **Fallback path:** if that connector is unavailable or fails, the skills must keep
+  delivering downloadable files exactly as they do now.
+
+This route is intentionally flagged as **high-risk and untested**: it depends on an
+undocumented interface, requires the student to supply a session credential, and may
+break without notice if Claude's web app changes.
 
 ## Model & effort recommendations
 
