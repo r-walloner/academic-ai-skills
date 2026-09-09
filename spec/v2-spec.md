@@ -162,6 +162,37 @@ The student's loop: skills write updated files to `/mnt/user-data/outputs/`, the
 student downloads and re-uploads them to the project. Every skill that writes a
 canonical file ends by presenting the file and reminding the user to re-upload it.
 
+### 3.4 Automation options for the re-upload loop
+
+The obvious product gap in this architecture is the last hop: a skill can prepare the
+next canonical file version, but the student still has to get it back into the Project.
+Issue #4 explored two ways to remove that manual step.
+
+**Option A — Claude Project files API + bundled MCP server.** Ideal shape: expose
+Project-file read/write endpoints, wrap them in an MCP server that ships with the
+plugin, and let the skill update `course-state.md` / `exam-brief.md` in place after
+producing the new version. Pros: the cleanest UX, no extra storage system, and true
+end-to-end automation. Current verdict: **not possible with the public surface that is
+known today.** Claude's public APIs expose files for API workloads, but there is no
+documented Project-knowledge API to target, so there is nothing a plugin MCP server can
+legitimately call here yet. This remains the preferred future direction if Anthropic
+adds that surface.
+
+**Option B — GitHub sync + GitHub/git MCP server.** Shape: treat a GitHub repository as
+the canonical store for `course-state.md`, `exam-brief.md`, and digests; let the skill
+write changes by calling a GitHub-capable MCP server; rely on Claude Project GitHub sync
+to pull the updated files into the Project knowledge base. Pros: uses capabilities that
+exist today, adds version history and diffs for free, and avoids inventing a parallel
+storage format. Cons: requires the student to have and connect a GitHub account, and it
+still falls short of full automation because Project GitHub sync is currently
+**on-demand** rather than automatic. So this path can reduce drag, but it cannot replace
+the explicit "sync/re-upload before the next session" reminder.
+
+Design consequence for v2: the manual download/re-upload loop stays part of the contract
+until a true Project-file write surface exists. The skills should therefore continue to
+present updated files explicitly and treat a missing re-upload as a normal, recoverable
+runtime condition rather than an exceptional failure.
+
 ---
 
 ## 4. The knowledge base: canonical files and formats

@@ -100,6 +100,25 @@ updated file as a download, and the next session is only as good as the state it
 starts from. If a skill can't find `course-state.md`, it will say so rather than
 silently starting fresh.
 
+### Automation status of that re-upload loop
+
+Issue #4 looked at two ways to remove the manual re-upload step entirely:
+
+1. **Claude Project files API + plugin-bundled MCP server.** This would be the clean
+   solution: let a skill write `course-state.md` / `exam-brief.md` back into the
+   Project directly through an API. At the moment, this is **not available**: Claude's
+   public API surface exposes file uploads for API workloads, but not Claude Project
+   knowledge files.
+2. **GitHub sync + a GitHub MCP server.** This is **partly possible** today: a skill
+   could commit updated course files into a GitHub repo that is connected to the
+   Project. The blocker is that Claude's Project GitHub connector currently syncs
+   **on demand**, so the student would still need to click **Sync now** before the
+   next session sees the change.
+
+So v2 keeps the explicit download/re-upload loop for now. If Claude adds direct
+Project-file APIs, that becomes the obvious path; until then, a GitHub-backed workflow
+is only a partial convenience trade-off, not true end-to-end automation.
+
 ## Model & effort recommendations
 
 Match the model to the step — spend reasoning where it pays:
