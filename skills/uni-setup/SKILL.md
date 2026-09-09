@@ -56,6 +56,10 @@ block, verbatim from `assets/project-instructions.md`).
      base. From then on: import each unit as it arrives, practice with `uni-tutor`,
      check assignment work with `uni-check`, and near the exam build a plan with
      `uni-plan`.
+   - If the plugin's experimental `project_sync` MCP tools are available, the
+     writing skills may also try to sync updated canonical files automatically via
+     Claude's unsupported web API. Flag this clearly as experimental and untested;
+     if it fails, the normal re-upload loop remains the fallback.
    - Whenever a skill hands back an updated file, re-upload it to the Project —
      that's how state carries forward.
 

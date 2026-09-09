@@ -47,8 +47,11 @@ reset. This is part of the boundary routine, not optional.
 
 **Contract:** project/upload mounts are read-only; updated files are written
 directly to `/mnt/user-data/outputs/`, presented as downloadable files (never
-inline code blocks), with a re-upload reminder. Merge, never clobber — the state
-file's header carries the full rules.
+inline code blocks), with a re-upload reminder. If the plugin's experimental
+`mcp__plugin_uni_project_sync__replace_doc` tool is available, you may call it
+**after** writing each canonical output file to try syncing it back into the Claude
+Project; on failure, keep the normal re-upload fallback. Merge, never clobber —
+the state file's header carries the full rules.
 
 ## Session start — every session
 
@@ -129,7 +132,10 @@ At the end (and at a pause, for topics actually covered):
    lines, the trap and the correct reflex. Only genuine recurring-mistake
    material, not every slip.
 3. Write file(s) to outputs, present, remind re-upload; note in one line what
-   changed and what's due next.
+   changed and what's due next. If the experimental
+   `mcp__plugin_uni_project_sync__replace_doc` tool is available, you may call it
+   for each file you wrote under `/mnt/user-data/outputs/`; if a call fails, note
+   the failed sync briefly and keep the normal fallback.
 
 ## Fit with siblings
 

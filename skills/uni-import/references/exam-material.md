@@ -58,7 +58,9 @@ honor them.
 6. **Deliver.** Write `exam-brief.md` (and `course-state.md` only if step 4 changed
    its header) to `/mnt/user-data/outputs/`, present the file(s), and remind the
    student to re-upload — and to keep the exam PDF in the project, since figure
-   retrieval depends on it.
+   retrieval depends on it. If the experimental
+   `mcp__plugin_uni_project_sync__replace_doc` tool is available, you may call it
+   for the file(s) you just wrote; if it fails, keep the normal re-upload fallback.
 
 ## Two things worth saying to the student
 

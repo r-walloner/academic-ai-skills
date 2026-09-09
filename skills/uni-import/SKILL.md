@@ -23,6 +23,10 @@ keeps each digest focused and the cost bounded; ask only if the choice is ambigu
   attempt in-place edits. To update a canonical file: read the current version
   (project, then uploads, then conversation), write the new one directly to
   `/mnt/user-data/outputs/<same-filename>`, present it, remind the student to re-upload.
+  If the plugin's experimental `mcp__plugin_uni_project_sync__replace_doc` tool is
+  available, you may call it **after** writing the output file to try to sync that
+  canonical file back into the Claude Project. Never skip file delivery; any sync
+  failure falls back to the normal re-upload reminder.
 - **Merge, never clobber** `course-state.md` and `exam-brief.md`: preserve every row,
   status, and date; append; the files' own headers carry the rules.
 - State stays lean: content goes into digests and `exam-brief.md`, never into
@@ -160,8 +164,12 @@ survives two fix rounds, show the student rather than deliver a broken file.
 
 Write the digest and the updated `course-state.md` to `/mnt/user-data/outputs/`,
 present both, remind the student to upload them (and to keep the raw source file in
-the project — figure retrieval depends on it). If a schedule already exists, note
-that the new topics aren't in it yet: "run uni-plan to fold them in."
+the project — figure retrieval depends on it). If the experimental
+`mcp__plugin_uni_project_sync__replace_doc` tool is available, you may call it for
+`digest-NN-slug.md` and `course-state.md` using the files you just wrote under
+`/mnt/user-data/outputs/`; if either call fails, say so in one line and keep the
+normal re-upload instruction. If a schedule already exists, note that the new topics
+aren't in it yet: "run uni-plan to fold them in."
 
 ## Route B — exam-related material → exam-brief.md
 

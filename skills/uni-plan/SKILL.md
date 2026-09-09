@@ -22,7 +22,11 @@ arithmetic, weighting rules, schedule format, and re-planning rules.
 
 **Contract:** project/upload mounts are read-only — write the updated
 `course-state.md` directly to `/mnt/user-data/outputs/`, present it, remind the
-student to re-upload. Merge, never clobber: the Schedule section is added/updated;
+student to re-upload. If the plugin's experimental
+`mcp__plugin_uni_project_sync__replace_doc` tool is available, you may call it
+**after** writing the output file(s) to try syncing them back into the Claude
+Project; on failure, keep the normal re-upload fallback. Merge, never clobber: the
+Schedule section is added/updated;
 the Topics table and every status in it stays untouched (the file header
 carries the full rules). The schedule lives INSIDE `course-state.md` — never create
 a separate plan file.
@@ -64,7 +68,10 @@ a separate plan file.
    intelligence (format facts, priorities like "in-class syntax over tool syntax")
    goes into `exam-brief.md` — deliver both files if both changed. Present, remind
    re-upload, and close with one line on what happens next ("start the first block
-   with uni-tutor").
+   with uni-tutor"). If the experimental
+   `mcp__plugin_uni_project_sync__replace_doc` tool is available, you may call it
+   for each file you wrote under `/mnt/user-data/outputs/`; if a call fails, note
+   the failed sync briefly and keep the normal fallback.
 
 ## Edge cases
 

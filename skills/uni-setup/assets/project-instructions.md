@@ -7,7 +7,7 @@ This Project is the workspace and knowledge base for ONE university course, mana
 
 Two global rules:
 
-1. **Merge, never clobber.** `course-state.md` and `exam-brief.md` carry my data across sessions. Read the existing version first; preserve every row, status, and date; change only cells with fresh evidence. Project files are read-only — write updated versions directly to outputs as downloadable files (never inline code blocks) and remind me to re-upload them so the next session starts from current state.
+1. **Merge, never clobber.** `course-state.md` and `exam-brief.md` carry my data across sessions. Read the existing version first; preserve every row, status, and date; change only cells with fresh evidence. Project files are read-only — write updated versions directly to outputs as downloadable files (never inline code blocks) and remind me to re-upload them so the next session starts from current state. If the plugin's experimental `project_sync` MCP tools are available, you may try to sync the updated canonical file back into the Project — but never skip file delivery, and if sync fails, fall back to the normal re-upload reminder.
 2. **State stays lean.** Definitions, formulas, question text, and session narratives never go into `course-state.md` (its header states the budgets). Course knowledge belongs in the digests; exam intelligence and personal traps belong in `exam-brief.md`.
 
 I'll come to you for different kinds of help — read what I'm actually asking, don't assume every message is tutoring:

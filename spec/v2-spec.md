@@ -1,4 +1,9 @@
-# Academic AI Skills — v2.2.0 Plugin Specification
+# Academic AI Skills — v2.3.0 Plugin Specification
+
+**Relationship to v2.2.0:** additive only. v2.3.0 ships an experimental bundled
+`project_sync` MCP server and updates the skill contract so writing skills may try to
+sync canonical files back into the Claude Project through the unsupported claude.ai web
+API, while preserving the existing downloadable-output fallback.
 
 **Relationship to v2.1.0:** one deliberate format change, otherwise additive. The topic
 table **loses its Note column** (five columns now: ID, Unit, Topic, Status, Last); the
@@ -161,6 +166,97 @@ mounted **read-only** at `/mnt/project` at runtime. The project holds:
 The student's loop: skills write updated files to `/mnt/user-data/outputs/`, the
 student downloads and re-uploads them to the project. Every skill that writes a
 canonical file ends by presenting the file and reminding the user to re-upload it.
+
+### 3.4 Automation options for the re-upload loop
+
+The obvious product gap in this architecture is the last hop: a skill can prepare the
+next canonical file version, but the student still has to get it back into the Project.
+Issue #4 explored two ways to remove that manual step.
+
+**Option A — Claude Project files API + bundled MCP server.** There is no known
+**public, documented** Project-files API. However, there does appear to be an
+**unofficial Claude web API** used by the claude.ai frontend itself: third-party tools
+have demonstrated endpoints for listing Project docs, uploading a doc, deleting a doc,
+and creating Projects, authenticated with a user `sessionKey` cookie rather than a
+normal API key. That makes this route technically plausible, but unsupported.
+
+Pros: the cleanest UX, no extra storage system, and true end-to-end automation inside
+the Project the student already uses. Cons: the interface is undocumented, may break
+without notice, needs a session credential rather than a normal API token, and raises a
+higher security/support burden for any packaged integration. This path must therefore be
+treated as **experimental** rather than foundational.
+
+**Option B — GitHub sync + GitHub/git MCP server.** Shape: treat a GitHub repository as
+the canonical store for `course-state.md`, `exam-brief.md`, and digests; let the skill
+write changes by calling a GitHub-capable MCP server; rely on Claude Project GitHub sync
+to pull the updated files into the Project knowledge base. Pros: uses documented
+capabilities that exist today, adds version history and diffs for free, and avoids
+inventing a parallel storage format. Cons: requires the student to have and connect a
+GitHub account, and it still falls short of full automation because Project GitHub sync
+is currently **on-demand** rather than automatic. So this path can reduce drag, but it
+cannot replace the explicit "sync/re-upload before the next session" reminder.
+
+### 3.5 Experimental implementation sketch: bundled Project-sync MCP server
+
+If the unsupported web-API route is accepted, the plugin can ship an **experimental**
+MCP connector dedicated to canonical Project-file sync.
+
+**Bundled server shape**
+
+- Ship a small MCP server with the plugin that exposes only the narrow operations the
+  framework needs:
+  - `project_sync.get_project`
+  - `project_sync.list_docs`
+  - `project_sync.put_doc`
+  - `project_sync.delete_doc`
+  - `project_sync.replace_doc`
+- The server authenticates against `https://claude.ai/api` with a user-provided
+  `sessionKey`, stored outside the canonical course files.
+- `replace_doc` is the main primitive the skills want: find an existing file by name,
+  delete it if present, then upload the replacement content under the same canonical
+  filename.
+- The server should refuse writes unless the target filename is one of the framework's
+  canonical outputs: `course-state.md`, `exam-brief.md`, or `digest-*.md`. The narrow
+  scope is deliberate: this is a sync helper, not a general Project-files client.
+- Every write tool should return a status block that includes: Project ID, filename,
+  whether an existing file was replaced or newly created, and the warning that the
+  connector is experimental and unsupported.
+
+**Plugin integration**
+
+- Bundle the server through plugin MCP configuration so the same install that exposes the
+  six skills also exposes the sync tools.
+- Setup remains manual by design: the student enables the connector explicitly and
+  provides the `sessionKey`. `uni-setup` is the natural place to explain the opt-in.
+- The connector must be optional. A course project without it remains fully supported on
+  the normal download/re-upload loop.
+
+**Skill integration**
+
+- `uni-setup`: mention the experimental sync option, explain that it is unsupported and
+  untested, and tell the student the normal loop remains the default.
+- `uni-import`, `uni-assess`, `uni-plan`, `uni-tutor`: after writing the updated file to
+  outputs, check whether the sync connector is available. If yes, offer or perform a
+  `replace_doc` call for the changed canonical file(s). If no, keep the existing
+  download/re-upload reminder unchanged.
+- `uni-check`: no integration needed; it does not write canonical files.
+- All writing skills must preserve today's fallback behavior: outputs remain the source
+  of truth for delivery, and a sync failure downgrades to "here is the file to upload"
+  rather than failing the run.
+
+**Failure model**
+
+- Session key missing/expired, Project lookup failure, and upload/delete mismatches are
+  expected runtime failures, not contract violations.
+- A failed sync must never suppress file delivery. The student still receives the
+  downloadable file and a one-line note that experimental auto-sync failed.
+- The framework contract therefore stays intact even if the connector breaks: the
+  automation path is an overlay on top of the manual loop, not a replacement for it.
+
+Design consequence for v2: the manual download/re-upload loop remains the guaranteed
+baseline. The experimental MCP route may reduce friction for users willing to accept its
+risks, but the skills should still treat missing re-uploads and sync unavailability as
+normal, recoverable runtime conditions rather than exceptional failures.
 
 ---
 
