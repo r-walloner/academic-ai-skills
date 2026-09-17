@@ -106,10 +106,10 @@ Match the model to the step — spend reasoning where it pays:
 
 | Task | Recommendation |
 |------|----------------|
-| **uni-import** | Mid-tier model, medium effort — mostly extraction and condensing; keeps per-lecture cost bounded. Be aware that for large lectures, this step can consume significant tokens. |
-| **uni-plan** | Strongest available model, high effort — triage and pacing logic; you plan rarely, so spend here. |
-| **uni-tutor** | Mid-tier model, high effort for the first message (it reads the plan, brief, and full digests and sets the agenda), then medium once the session is underway. |
-| **uni-check** | High effort whenever real verification is involved (proofs, complexity, derivations) — the value is careful step-by-step checking. Choose the model based on the complexity of the task. |
+| **uni-import** | Mid-tier model, high effort — mostly extraction and condensing. Be aware that for large lectures, this step can consume significant tokens. |
+| **uni-plan** | Strongest available model, extra effort — triage and pacing logic; you plan rarely, so spend here. |
+| **uni-tutor** | Mid-tier model, extra effort for the first message (it reads the plan, brief, and full digests and sets the agenda), then high once the session is underway. |
+| **uni-check** | Strongest model, high effort whenever real verification is involved (proofs, complexity, derivations) — the value is careful step-by-step checking. |
 | **uni-setup / uni-assess** | Anything — they're deliberately trivial. |
 
 ## Extending the plugin
